@@ -1,3 +1,89 @@
 <resources>
     <string name="app_name">Music Player</string>
+
+    <!-- Folder List Screen -->
+    <string name="music_folders">Music Folders</string>
+    <string name="folder_summary_root_only">Root storage</string>
+    <string name="folder_summary_single">1 folder</string>
+    <string name="folder_summary_single_plus_root">1 folder + root</string>
+    <string name="folder_summary_multiple">%1$d folders</string>
+    <string name="folder_summary_multiple_plus_root">%1$d folders + root</string>
+    <string name="song_summary_single">1 song found</string>
+    <string name="song_summary_multiple">%1$d songs found</string>
+    <string name="summary_combined">%1$s • %2$s</string>
+
+    <string name="cd_pick_files">Pick Audio Files</string>
+    <string name="cd_pick_folder">Pick Folder</string>
+    <string name="cd_rescan">Rescan Shared Folders</string>
+    <string name="cd_switch_language">Change Language</string>
+    <string name="cd_open_folder">Open Folder</string>
+    <string name="cd_back_to_folders">Back to folders</string>
+
+    <string name="scanning_folders">Scanning shared folders for MP3 music…</string>
+    <string name="no_music_found_title">No MP3 Music Found</string>
+    <string name="no_music_found_desc">No MP3 files were detected in shared storage. You can scan again or choose a specific folder.</string>
+    <string name="btn_scan">Scan</string>
+    <string name="btn_folder">Folder</string>
+    <string name="btn_files">Files</string>
+
+    <!-- Folder Item -->
+    <string name="no_folder_name">No Folder</string>
+    <string name="no_folder_display_path">Root Storage • Standalone Audio</string>
+    <string name="badge_song_count_single">1 MP3</string>
+    <string name="badge_song_count_multiple">%1$d MP3s</string>
+
+    <!-- Song List Screen -->
+    <string name="song_count_single">1 MP3 track</string>
+    <string name="song_count_multiple">%1$d MP3 tracks</string>
+    <string name="root_storage_subtitle">Root Storage • %1$s</string>
+    <string name="btn_play_all">Play All</string>
+    <string name="btn_shuffle">Shuffle</string>
+
+    <string name="cd_playing">Playing</string>
+    <string name="cd_selected">Selected</string>
+
+    <!-- Playback Controls & Info -->
+    <string name="cd_play">Play</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_next">Next</string>
+    <string name="cd_previous">Previous</string>
+    <string name="cd_shuffle">Shuffle</string>
+    <string name="cd_repeat_off">Repeat Off</string>
+    <string name="cd_repeat_all">Repeat All</string>
+    <string name="cd_repeat_one">Repeat One</string>
+    <string name="cd_collapse">Collapse</string>
+
+    <string name="playing_from_folder">PLAYING FROM FOLDER</string>
+    <string name="tag_mp3_audio">MP3 AUDIO</string>
+    <string name="tag_stereo">STEREO</string>
+
+    <!-- Permission Screen -->
+    <string name="permission_title">Audio Permission Needed</string>
+    <string name="permission_desc">To scan and organize MP3 music from your shared storage into folders, the app needs permission to access your audio files.</string>
+    <string name="btn_grant_permission">Grant Audio Permission</string>
+    <string name="permission_manual_pick_hint">Or choose a specific folder manually:</string>
+    <string name="btn_select_music_folder">Select Music Folder</string>
+
+    <!-- Notification & Background Service -->
+    <string name="notification_channel_name">Music Playback</string>
+    <string name="notification_channel_desc">Controls for background music playback</string>
+    <string name="no_track_playing">No track playing</string>
+    <string name="notification_action_prev">Previous</string>
+    <string name="notification_action_play">Play</string>
+    <string name="notification_action_pause">Pause</string>
+    <string name="notification_action_next">Next</string>
+    <string name="notification_action_close">Close</string>
+
+    <!-- Language Selection Dialog -->
+    <string name="select_language_title">Select Language</string>
+    <string name="language_system_default">System Default</string>
+    <string name="language_english">English</string>
+    <string name="language_traditional_chinese">Traditional Chinese (繁體中文)</string>
+    <string name="btn_cancel">Cancel</string>
+
+    <!-- Errors and Fallbacks -->
+    <string name="unknown_artist">Unknown Artist</string>
+    <string name="unknown_album">Unknown Album</string>
+    <string name="playback_error">Playback error: (%1$d, %2$d)</string>
+    <string name="unable_to_play">Unable to play: %1$s</string>
 </resources>

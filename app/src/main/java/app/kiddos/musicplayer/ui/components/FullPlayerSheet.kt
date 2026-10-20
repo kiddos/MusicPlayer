@@ -62,13 +62,18 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.kiddos.musicplayer.R
 import app.kiddos.musicplayer.model.AudioFile
+import app.kiddos.musicplayer.model.MusicFolder
 import app.kiddos.musicplayer.model.RepeatMode
+import app.kiddos.musicplayer.model.displayAlbum
+import app.kiddos.musicplayer.model.displayArtist
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -146,7 +151,7 @@ fun FullPlayerSheet(
                 IconButton(onClick = onDismiss) {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Collapse",
+                        contentDescription = stringResource(R.string.cd_collapse),
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(32.dp)
                     )
@@ -156,15 +161,20 @@ fun FullPlayerSheet(
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "PLAYING FROM FOLDER",
+                        text = stringResource(R.string.playing_from_folder),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     )
                     Spacer(modifier = Modifier.height(2.dp))
+                    val folderDisplayName = if (song.folderName == MusicFolder.NO_FOLDER_NAME) {
+                        stringResource(R.string.no_folder_name)
+                    } else {
+                        song.folderName
+                    }
                     Text(
-                        text = song.folderName,
+                        text = folderDisplayName,
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -250,8 +260,10 @@ fun FullPlayerSheet(
 
             Spacer(modifier = Modifier.height(6.dp))
 
+            val artistText = song.displayArtist()
+            val albumText = song.displayAlbum()
             Text(
-                text = "${song.artist} • ${song.album}",
+                text = "$artistText • $albumText",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -312,7 +324,7 @@ fun FullPlayerSheet(
                 IconButton(onClick = onToggleShuffle) {
                     Icon(
                         imageVector = Icons.Default.Shuffle,
-                        contentDescription = "Shuffle",
+                        contentDescription = stringResource(R.string.cd_shuffle),
                         tint = if (isShuffle) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(26.dp)
                     )
@@ -325,7 +337,7 @@ fun FullPlayerSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Default.SkipPrevious,
-                        contentDescription = "Previous",
+                        contentDescription = stringResource(R.string.cd_previous),
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(36.dp)
                     )
@@ -343,7 +355,7 @@ fun FullPlayerSheet(
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
+                        contentDescription = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play),
                         modifier = Modifier.size(40.dp)
                     )
                 }
@@ -355,7 +367,7 @@ fun FullPlayerSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Default.SkipNext,
-                        contentDescription = "Next",
+                        contentDescription = stringResource(R.string.cd_next),
                         tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(36.dp)
                     )
@@ -367,7 +379,7 @@ fun FullPlayerSheet(
                         RepeatMode.OFF -> {
                             Icon(
                                 imageVector = Icons.Default.Repeat,
-                                contentDescription = "Repeat Off",
+                                contentDescription = stringResource(R.string.cd_repeat_off),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                                 modifier = Modifier.size(26.dp)
                             )
@@ -375,7 +387,7 @@ fun FullPlayerSheet(
                         RepeatMode.ALL -> {
                             Icon(
                                 imageVector = Icons.Default.Repeat,
-                                contentDescription = "Repeat All",
+                                contentDescription = stringResource(R.string.cd_repeat_all),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(26.dp)
                             )
@@ -383,7 +395,7 @@ fun FullPlayerSheet(
                         RepeatMode.ONE -> {
                             Icon(
                                 imageVector = Icons.Default.RepeatOne,
-                                contentDescription = "Repeat One",
+                                contentDescription = stringResource(R.string.cd_repeat_one),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(26.dp)
                             )
@@ -413,7 +425,7 @@ fun FullPlayerSheet(
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Text(
-                                text = "MP3 AUDIO",
+                                text = stringResource(R.string.tag_mp3_audio),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -441,7 +453,7 @@ fun FullPlayerSheet(
                             color = MaterialTheme.colorScheme.surfaceContainerHighest
                         ) {
                             Text(
-                                text = "STEREO",
+                                text = stringResource(R.string.tag_stereo),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -461,8 +473,13 @@ fun FullPlayerSheet(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
+                        val displayFolderPath = if (song.folderName == MusicFolder.NO_FOLDER_NAME) {
+                            stringResource(R.string.no_folder_display_path)
+                        } else {
+                            song.folderPath
+                        }
                         Text(
-                            text = song.folderPath,
+                            text = displayFolderPath,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,

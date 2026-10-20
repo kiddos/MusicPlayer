@@ -1,6 +1,9 @@
 package app.kiddos.musicplayer.model
 
 import android.net.Uri
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import app.kiddos.musicplayer.R
 
 data class AudioFile(
     val id: Long,
@@ -34,3 +37,20 @@ data class AudioFile(
         }
 }
 
+@Composable
+fun AudioFile.displayArtist(): String {
+    return if (artist.isBlank() || artist.contains("<unknown>", ignoreCase = true) || artist.equals("Unknown Artist", ignoreCase = true)) {
+        stringResource(R.string.unknown_artist)
+    } else {
+        artist
+    }
+}
+
+@Composable
+fun AudioFile.displayAlbum(): String {
+    return if (album.isBlank() || album.contains("<unknown>", ignoreCase = true) || album.equals("Unknown Album", ignoreCase = true)) {
+        stringResource(R.string.unknown_album)
+    } else {
+        album
+    }
+}

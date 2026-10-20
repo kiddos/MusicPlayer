@@ -34,10 +34,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.kiddos.musicplayer.R
 import app.kiddos.musicplayer.model.AudioFile
+import app.kiddos.musicplayer.model.MusicFolder
+import app.kiddos.musicplayer.model.displayArtist
 
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.filled.Equalizer
@@ -124,8 +129,14 @@ fun MiniPlayer(
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.basicMarquee()
                             )
+                            val fName = if (currentSong.folderName == MusicFolder.NO_FOLDER_NAME) {
+                                stringResource(R.string.no_folder_name)
+                            } else {
+                                currentSong.folderName
+                            }
+                            val artistText = currentSong.displayArtist()
                             Text(
-                                text = "${currentSong.artist} • ${currentSong.folderName}",
+                                text = "$artistText • $fName",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -143,7 +154,7 @@ fun MiniPlayer(
                         ) {
                             Icon(
                                 imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                contentDescription = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play),
                                 tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -158,7 +169,7 @@ fun MiniPlayer(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.SkipNext,
-                                contentDescription = "Next",
+                                contentDescription = stringResource(R.string.cd_next),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp)
                             )

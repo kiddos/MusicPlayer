@@ -33,6 +33,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _hasPermission = MutableStateFlow(false)
     val hasPermission: StateFlow<Boolean> = _hasPermission.asStateFlow()
 
+    private val _currentLanguage = MutableStateFlow(app.kiddos.musicplayer.util.LocaleHelper.getSavedLanguage(application))
+    val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
+
     val currentSong: StateFlow<AudioFile?> = playerManager.currentSong
     val isPlaying: StateFlow<Boolean> = playerManager.isPlaying
     val currentPositionMs: StateFlow<Long> = playerManager.currentPositionMs
@@ -168,5 +171,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearError() {
         playerManager.clearError()
+    }
+
+    fun setLanguage(languageCode: String) {
+        app.kiddos.musicplayer.util.LocaleHelper.setLanguage(getApplication(), languageCode)
+        _currentLanguage.value = languageCode
     }
 }

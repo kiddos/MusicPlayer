@@ -20,11 +20,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Equalizer
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,15 +40,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.kiddos.musicplayer.R
 import app.kiddos.musicplayer.model.AudioFile
 import app.kiddos.musicplayer.model.MusicFolder
-
-import androidx.compose.material.icons.filled.Shuffle
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
+import app.kiddos.musicplayer.model.displayAlbum
+import app.kiddos.musicplayer.model.displayArtist
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,16 +68,25 @@ fun SongListScreen(
             TopAppBar(
                 title = {
                     Column {
+                        val folderDisplayName = if (folder.isNoFolder) {
+                            stringResource(R.string.no_folder_name)
+                        } else {
+                            folder.name
+                        }
                         Text(
-                            text = folder.name,
+                            text = folderDisplayName,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        val countText = if (folder.songCount == 1) "1 MP3 track" else "${folder.songCount} MP3 tracks"
+                        val countText = if (folder.songCount == 1) {
+                            stringResource(R.string.song_count_single)
+                        } else {
+                            stringResource(R.string.song_count_multiple, folder.songCount)
+                        }
                         val subtitleText = if (folder.isNoFolder) {
-                            "Root Storage • $countText"
+                            stringResource(R.string.root_storage_subtitle, countText)
                         } else {
                             countText
                         }
@@ -90,7 +101,7 @@ fun SongListScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back to folders"
+                            contentDescription = stringResource(R.string.cd_back_to_folders)
                         )
                     }
                 },
@@ -124,7 +135,7 @@ fun SongListScreen(
                         ) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Play All")
+                            Text(stringResource(R.string.btn_play_all))
                         }
                         FilledTonalButton(
                             onClick = onShuffleAllClick,
@@ -133,7 +144,7 @@ fun SongListScreen(
                         ) {
                             Icon(Icons.Default.Shuffle, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Shuffle")
+                            Text(stringResource(R.string.btn_shuffle))
                         }
                     }
                 }
@@ -195,14 +206,14 @@ fun SongItem(
                     if (isPlaying) {
                         Icon(
                             imageVector = Icons.Default.Equalizer,
-                            contentDescription = "Playing",
+                            contentDescription = stringResource(R.string.cd_playing),
                             tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(22.dp)
                         )
                     } else if (isSelected) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Selected",
+                            contentDescription = stringResource(R.string.cd_selected),
                             tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(22.dp)
                         )
@@ -230,8 +241,10 @@ fun SongItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(2.dp))
+                val artistText = song.displayArtist()
+                val albumText = song.displayAlbum()
                 Text(
-                    text = "${song.artist} • ${song.album}",
+                    text = "$artistText • $albumText",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

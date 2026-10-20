@@ -40,11 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.kiddos.musicplayer.R
 import app.kiddos.musicplayer.ui.components.FullPlayerSheet
 import app.kiddos.musicplayer.ui.components.MiniPlayer
 import app.kiddos.musicplayer.ui.screens.FolderListScreen
@@ -61,6 +63,7 @@ fun MusicApp(
     val isScanning by viewModel.isScanning.collectAsState()
     val selectedFolder by viewModel.selectedFolder.collectAsState()
     val hasPermission by viewModel.hasPermission.collectAsState()
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
 
     val currentSong by viewModel.currentSong.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
@@ -201,6 +204,8 @@ fun MusicApp(
                     onRescanClick = { viewModel.scanMusic() },
                     onPickFolderClick = { folderPickerLauncher.launch(null) },
                     onPickFilesClick = { filePickerLauncher.launch(arrayOf("audio/*", "application/octet-stream")) },
+                    currentLanguage = currentLanguage,
+                    onLanguageSelect = { lang -> viewModel.setLanguage(lang) },
                     bottomPadding = innerPadding
                 )
             }
@@ -256,7 +261,7 @@ fun PermissionRequiredScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Audio Permission Needed",
+            text = stringResource(R.string.permission_title),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
@@ -265,7 +270,7 @@ fun PermissionRequiredScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "To scan and organize MP3 music from your shared storage into folders, the app needs permission to access your audio files.",
+            text = stringResource(R.string.permission_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -279,13 +284,13 @@ fun PermissionRequiredScreen(
         ) {
             Icon(Icons.Default.Security, contentDescription = null)
             Spacer(modifier = Modifier.size(8.dp))
-            Text("Grant Audio Permission")
+            Text(stringResource(R.string.btn_grant_permission))
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = "Or choose a specific folder manually:",
+            text = stringResource(R.string.permission_manual_pick_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -298,7 +303,7 @@ fun PermissionRequiredScreen(
         ) {
             Icon(Icons.Default.Folder, contentDescription = null)
             Spacer(modifier = Modifier.size(8.dp))
-            Text("Select Music Folder")
+            Text(stringResource(R.string.btn_select_music_folder))
         }
     }
 }

@@ -94,7 +94,7 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
                     handleSongCompletion()
                 }
                 setOnErrorListener { _, what, extra ->
-                    _errorMessage.value = "Playback error: ($what, $extra)"
+                    _errorMessage.value = appContext.getString(app.kiddos.musicplayer.R.string.playback_error, what, extra)
                     _isPlaying.value = false
                     stopPositionTicker()
                     false
@@ -104,7 +104,7 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
             mediaPlayer = player
         } catch (e: Exception) {
             e.printStackTrace()
-            _errorMessage.value = "Unable to play: ${e.localizedMessage}"
+            _errorMessage.value = appContext.getString(app.kiddos.musicplayer.R.string.unable_to_play, e.localizedMessage ?: "")
             _isPlaying.value = false
         }
     }

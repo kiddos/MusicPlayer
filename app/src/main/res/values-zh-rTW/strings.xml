@@ -1,0 +1,89 @@
+<resources>
+    <string name="app_name">音樂播放器</string>
+
+    <!-- Folder List Screen -->
+    <string name="music_folders">音樂資料夾</string>
+    <string name="folder_summary_root_only">根目錄儲存空間</string>
+    <string name="folder_summary_single">1 個資料夾</string>
+    <string name="folder_summary_single_plus_root">1 個資料夾 + 根目錄</string>
+    <string name="folder_summary_multiple">%1$d 個資料夾</string>
+    <string name="folder_summary_multiple_plus_root">%1$d 個資料夾 + 根目錄</string>
+    <string name="song_summary_single">找到 1 首歌曲</string>
+    <string name="song_summary_multiple">找到 %1$d 首歌曲</string>
+    <string name="summary_combined">%1$s • %2$s</string>
+
+    <string name="cd_pick_files">選取音訊檔案</string>
+    <string name="cd_pick_folder">選取資料夾</string>
+    <string name="cd_rescan">重新掃描共用資料夾</string>
+    <string name="cd_switch_language">切換語言</string>
+    <string name="cd_open_folder">開啟資料夾</string>
+    <string name="cd_back_to_folders">返回資料夾列表</string>
+
+    <string name="scanning_folders">正在掃描共用資料夾中的 MP3 音樂…</string>
+    <string name="no_music_found_title">找不到 MP3 音樂</string>
+    <string name="no_music_found_desc">在共用儲存空間中未偵測到 MP3 檔案。您可以重新掃描或手動選取特定資料夾。</string>
+    <string name="btn_scan">掃描</string>
+    <string name="btn_folder">資料夾</string>
+    <string name="btn_files">檔案</string>
+
+    <!-- Folder Item -->
+    <string name="no_folder_name">未分類 (根目錄)</string>
+    <string name="no_folder_display_path">根目錄儲存空間 • 獨立音訊</string>
+    <string name="badge_song_count_single">1 首 MP3</string>
+    <string name="badge_song_count_multiple">%1$d 首 MP3</string>
+
+    <!-- Song List Screen -->
+    <string name="song_count_single">1 首 MP3 曲目</string>
+    <string name="song_count_multiple">%1$d 首 MP3 曲目</string>
+    <string name="root_storage_subtitle">根目錄儲存空間 • %1$s</string>
+    <string name="btn_play_all">全部播放</string>
+    <string name="btn_shuffle">隨機播放</string>
+
+    <string name="cd_playing">正在播放</string>
+    <string name="cd_selected">已選取</string>
+
+    <!-- Playback Controls & Info -->
+    <string name="cd_play">播放</string>
+    <string name="cd_pause">暫停</string>
+    <string name="cd_next">下一首</string>
+    <string name="cd_previous">上一首</string>
+    <string name="cd_shuffle">隨機播放</string>
+    <string name="cd_repeat_off">關閉重複播放</string>
+    <string name="cd_repeat_all">全部重複播放</string>
+    <string name="cd_repeat_one">單曲循環</string>
+    <string name="cd_collapse">收合</string>
+
+    <string name="playing_from_folder">正在播放資料夾</string>
+    <string name="tag_mp3_audio">MP3 音訊</string>
+    <string name="tag_stereo">立體聲</string>
+
+    <!-- Permission Screen -->
+    <string name="permission_title">需要音訊存取權限</string>
+    <string name="permission_desc">為了從共用儲存空間掃描並將 MP3 音樂整理至資料夾，應用程式需要存取您的音訊檔案權限。</string>
+    <string name="btn_grant_permission">授予音訊權限</string>
+    <string name="permission_manual_pick_hint">或手動選取特定資料夾：</string>
+    <string name="btn_select_music_folder">選取音樂資料夾</string>
+
+    <!-- Notification & Background Service -->
+    <string name="notification_channel_name">音樂播放</string>
+    <string name="notification_channel_desc">背景音樂播放控制</string>
+    <string name="no_track_playing">目前未播放曲目</string>
+    <string name="notification_action_prev">上一首</string>
+    <string name="notification_action_play">播放</string>
+    <string name="notification_action_pause">暫停</string>
+    <string name="notification_action_next">下一首</string>
+    <string name="notification_action_close">關閉</string>
+
+    <!-- Language Selection Dialog -->
+    <string name="select_language_title">選擇語言</string>
+    <string name="language_system_default">跟隨系統</string>
+    <string name="language_english">English</string>
+    <string name="language_traditional_chinese">繁體中文</string>
+    <string name="btn_cancel">取消</string>
+
+    <!-- Errors and Fallbacks -->
+    <string name="unknown_artist">未知演出者</string>
+    <string name="unknown_album">未知專輯</string>
+    <string name="playback_error">播放錯誤：(%1$d, %2$d)</string>
+    <string name="unable_to_play">無法播放：%1$s</string>
+</resources>

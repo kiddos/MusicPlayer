@@ -16,17 +16,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.AudioFile
-import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Badge
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -36,19 +37,29 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.kiddos.musicplayer.R
 import app.kiddos.musicplayer.model.MusicFolder
+import app.kiddos.musicplayer.util.LocaleHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,16 +70,28 @@ fun FolderListScreen(
     onRescanClick: () -> Unit,
     onPickFolderClick: () -> Unit,
     onPickFilesClick: () -> Unit = {},
+    currentLanguage: String = LocaleHelper.LANG_SYSTEM,
+    onLanguageSelect: (String) -> Unit = {},
     bottomPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
+    if (showLanguageDialog) {
+        LanguageSelectionDialog(
+            currentLanguage = currentLanguage,
+            onLanguageSelect = onLanguageSelect,
+            onDismiss = { showLanguageDialog = false }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(
-                            text = "Music Folders",
+                            text = stringResource(R.string.music_folders),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
@@ -76,15 +99,19 @@ fun FolderListScreen(
                         val regularFolderCount = folders.count { !it.isNoFolder }
                         val hasNoFolder = folders.any { it.isNoFolder }
                         val folderText = when {
-                            regularFolderCount == 0 && hasNoFolder -> "Root storage"
-                            regularFolderCount == 1 && !hasNoFolder -> "1 folder"
-                            regularFolderCount == 1 && hasNoFolder -> "1 folder + root"
-                            hasNoFolder -> "$regularFolderCount folders + root"
-                            else -> "$regularFolderCount folders"
+                            regularFolderCount == 0 && hasNoFolder -> stringResource(R.string.folder_summary_root_only)
+                            regularFolderCount == 1 && !hasNoFolder -> stringResource(R.string.folder_summary_single)
+                            regularFolderCount == 1 && hasNoFolder -> stringResource(R.string.folder_summary_single_plus_root)
+                            hasNoFolder -> stringResource(R.string.folder_summary_multiple_plus_root, regularFolderCount)
+                            else -> stringResource(R.string.folder_summary_multiple, regularFolderCount)
                         }
-                        val songsText = if (totalSongs == 1) "1 song found" else "$totalSongs songs found"
+                        val songsText = if (totalSongs == 1) {
+                            stringResource(R.string.song_summary_single)
+                        } else {
+                            stringResource(R.string.song_summary_multiple, totalSongs)
+                        }
                         Text(
-                            text = "$folderText • $songsText",
+                            text = stringResource(R.string.summary_combined, folderText, songsText),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -97,7 +124,7 @@ fun FolderListScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.MusicNote,
-                            contentDescription = "Pick Audio Files"
+                            contentDescription = stringResource(R.string.cd_pick_files)
                         )
                     }
                     IconButton(
@@ -106,7 +133,7 @@ fun FolderListScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.FolderOpen,
-                            contentDescription = "Pick Folder"
+                            contentDescription = stringResource(R.string.cd_pick_folder)
                         )
                     }
                     IconButton(
@@ -115,7 +142,15 @@ fun FolderListScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Rescan Shared Folders"
+                            contentDescription = stringResource(R.string.cd_rescan)
+                        )
+                    }
+                    IconButton(
+                        onClick = { showLanguageDialog = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = stringResource(R.string.cd_switch_language)
                         )
                     }
                 },
@@ -145,7 +180,7 @@ fun FolderListScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Scanning shared folders for MP3 music...",
+                            text = stringResource(R.string.scanning_folders),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -178,7 +213,7 @@ fun FolderListScreen(
                         Spacer(modifier = Modifier.height(20.dp))
 
                         Text(
-                            text = "No MP3 Music Found",
+                            text = stringResource(R.string.no_music_found_title),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -186,7 +221,7 @@ fun FolderListScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "No MP3 files were detected in shared storage. You can scan again or choose a specific folder.",
+                            text = stringResource(R.string.no_music_found_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -201,19 +236,19 @@ fun FolderListScreen(
                             Button(onClick = onRescanClick) {
                                 Icon(Icons.Default.Refresh, contentDescription = null)
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Scan")
+                                Text(stringResource(R.string.btn_scan))
                             }
 
                             OutlinedButton(onClick = onPickFolderClick) {
                                 Icon(Icons.Default.FolderOpen, contentDescription = null)
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Folder")
+                                Text(stringResource(R.string.btn_folder))
                             }
 
                             OutlinedButton(onClick = onPickFilesClick) {
                                 Icon(Icons.Default.MusicNote, contentDescription = null)
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Files")
+                                Text(stringResource(R.string.btn_files))
                             }
                         }
                     }
@@ -286,8 +321,13 @@ fun FolderCard(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
+                val folderDisplayName = if (folder.isNoFolder) {
+                    stringResource(R.string.no_folder_name)
+                } else {
+                    folder.name
+                }
                 Text(
-                    text = folder.name,
+                    text = folderDisplayName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -295,7 +335,7 @@ fun FolderCard(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 val displayPath = if (folder.isNoFolder) {
-                    MusicFolder.NO_FOLDER_DISPLAY_PATH
+                    stringResource(R.string.no_folder_display_path)
                 } else {
                     folder.path
                 }
@@ -319,7 +359,11 @@ fun FolderCard(
                 },
                 modifier = Modifier.padding(end = 4.dp)
             ) {
-                val badgeText = if (folder.songCount == 1) "1 MP3" else "${folder.songCount} MP3s"
+                val badgeText = if (folder.songCount == 1) {
+                    stringResource(R.string.badge_song_count_single)
+                } else {
+                    stringResource(R.string.badge_song_count_multiple, folder.songCount)
+                }
                 Text(
                     text = badgeText,
                     style = MaterialTheme.typography.labelSmall,
@@ -335,9 +379,95 @@ fun FolderCard(
 
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = "Open Folder",
+                contentDescription = stringResource(R.string.cd_open_folder),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+fun LanguageSelectionDialog(
+    currentLanguage: String,
+    onLanguageSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.select_language_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectableGroup()
+            ) {
+                LanguageOption(
+                    title = stringResource(R.string.language_system_default),
+                    selected = currentLanguage == LocaleHelper.LANG_SYSTEM,
+                    onClick = {
+                        onLanguageSelect(LocaleHelper.LANG_SYSTEM)
+                        onDismiss()
+                    }
+                )
+                LanguageOption(
+                    title = stringResource(R.string.language_english),
+                    selected = currentLanguage == LocaleHelper.LANG_EN,
+                    onClick = {
+                        onLanguageSelect(LocaleHelper.LANG_EN)
+                        onDismiss()
+                    }
+                )
+                LanguageOption(
+                    title = stringResource(R.string.language_traditional_chinese),
+                    selected = currentLanguage == LocaleHelper.LANG_ZH_TW,
+                    onClick = {
+                        onLanguageSelect(LocaleHelper.LANG_ZH_TW)
+                        onDismiss()
+                    }
+                )
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.btn_cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun LanguageOption(
+    title: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .selectable(
+                selected = selected,
+                role = Role.RadioButton,
+                onClick = onClick
+            )
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = null
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge
+        )
     }
 }

@@ -14,12 +14,21 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import app.kiddos.musicplayer.MainActivity
+import app.kiddos.musicplayer.R
+import app.kiddos.musicplayer.model.MusicFolder
 import app.kiddos.musicplayer.playback.MusicPlayerManager
+import app.kiddos.musicplayer.util.LocaleHelper
 
 class MusicService : Service() {
 
     private val playerManager by lazy { MusicPlayerManager.getInstance(applicationContext) }
     private var isNoisyReceiverRegistered = false
+
+    override fun attachBaseContext(newBase: Context) {
+        val lang = LocaleHelper.getSavedLanguage(newBase)
+        val localized = LocaleHelper.createLocalizedContext(newBase, lang)
+        super.attachBaseContext(localized)
+    }
 
     private val noisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -142,8 +151,14 @@ class MusicService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val title = song?.title ?: "Music Player"
-        val artist = song?.let { "${it.artist} • ${it.folderName}" } ?: "No track playing"
+        val title = song?.title ?: getString(R.string.app_name)
+        val artist = song?.let {
+            val fName = if (it.folderName == MusicFolder.NO_FOLDER_NAME) getString(R.string.no_folder_name) else it.folderName
+            val artistName = if (it.artist.contains("<unknown>", ignoreCase = true) || it.artist.equals("Unknown Artist", ignoreCase = true)) {
+                getString(R.string.unknown_artist)
+            } else it.artist
+            "$artistName • $fName"
+        } ?: getString(R.string.no_track_playing)
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
@@ -153,14 +168,14 @@ class MusicService : Service() {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(isPlaying)
             .setSilent(true)
-            .addAction(android.R.drawable.ic_media_previous, "Previous", prevPendingIntent)
+            .addAction(android.R.drawable.ic_media_previous, getString(R.string.notification_action_prev), prevPendingIntent)
             .addAction(
                 if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
-                if (isPlaying) "Pause" else "Play",
+                if (isPlaying) getString(R.string.notification_action_pause) else getString(R.string.notification_action_play),
                 playPausePendingIntent
             )
-            .addAction(android.R.drawable.ic_media_next, "Next", nextPendingIntent)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Close", stopPendingIntent)
+            .addAction(android.R.drawable.ic_media_next, getString(R.string.notification_action_next), nextPendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, getString(R.string.notification_action_close), stopPendingIntent)
             .setStyle(
                 androidx.media.app.NotificationCompat.MediaStyle()
                     .setShowActionsInCompactView(0, 1, 2)
@@ -172,10 +187,10 @@ class MusicService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Music Playback",
+                getString(R.string.notification_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Controls for background music playback"
+                description = getString(R.string.notification_channel_desc)
                 setShowBadge(false)
             }
             val manager = getSystemService(NotificationManager::class.java)
