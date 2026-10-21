@@ -1,11 +1,17 @@
 package app.kiddos.musicplayer.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode as AnimRepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.isActive
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
@@ -103,16 +109,52 @@ fun FullPlayerSheet(
     val displayPosition = if (isUserDragging) dragPositionMs.toLong() else currentPositionMs
     val effectiveDuration = durationMs.coerceAtLeast(1L)
 
-    // Spinning vinyl animation when playing
-    val infiniteTransition = rememberInfiniteTransition(label = "VinylRotation")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
+    // Smooth vinyl rotation (maintains angle when paused, no abrupt snap to 0)
+    val vinylRotation = remember { Animatable(0f) }
+    LaunchedEffect(isPlaying) {
+        if (isPlaying) {
+            while (isActive) {
+                val current = vinylRotation.value % 360f
+                vinylRotation.snapTo(current)
+                vinylRotation.animateTo(
+                    targetValue = current + 360f,
+                    animationSpec = tween(durationMillis = 12000, easing = LinearEasing)
+                )
+            }
+        }
+    }
+
+    // Music note lively rhythmic groove & pulse animation
+    val noteTransition = rememberInfiniteTransition(label = "MusicNoteGroove")
+    val pulseScale by noteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.16f,
         animationSpec = infiniteRepeatable(
-            animation = tween(12000, easing = LinearEasing),
-            repeatMode = AnimRepeatMode.Restart
+            animation = tween(durationMillis = 850, easing = FastOutSlowInEasing),
+            repeatMode = AnimRepeatMode.Reverse
         ),
-        label = "RotationAngle"
+        label = "NotePulseScale"
+    )
+    val swayAngle by noteTransition.animateFloat(
+        initialValue = -8f,
+        targetValue = 8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1700, easing = FastOutSlowInEasing),
+            repeatMode = AnimRepeatMode.Reverse
+        ),
+        label = "NoteSwayAngle"
+    )
+
+    // Smooth return to upright rest position when playback is paused
+    val animatedNoteScale by animateFloatAsState(
+        targetValue = if (isPlaying) pulseScale else 1f,
+        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+        label = "RestNoteScale"
+    )
+    val animatedNoteSway by animateFloatAsState(
+        targetValue = if (isPlaying) swayAngle else 0f,
+        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+        label = "RestNoteSway"
     )
 
     ModalBottomSheet(
@@ -205,27 +247,53 @@ fun FullPlayerSheet(
                                 MaterialTheme.colorScheme.surfaceTint.copy(alpha = 0.85f)
                             )
                         )
-                    )
-                    .rotate(if (isPlaying) rotation else 0f),
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                // Vinyl grooves
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                    modifier = Modifier.fillMaxSize(0.85f)
-                ) {}
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                    modifier = Modifier.fillMaxSize(0.65f)
-                ) {}
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
-                    modifier = Modifier.fillMaxSize(0.48f)
-                ) {}
-                // Center disc label
+                // Spinning vinyl layer (grooves and realistic specular sheen)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .rotate(vinylRotation.value),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Vinyl grooves
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                        modifier = Modifier.fillMaxSize(0.85f)
+                    ) {}
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        modifier = Modifier.fillMaxSize(0.65f)
+                    ) {}
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
+                        modifier = Modifier.fillMaxSize(0.48f)
+                    ) {}
+
+                    // Specular sheen light reflection across grooves
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.sweepGradient(
+                                    listOf(
+                                        Color.Transparent,
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                                        Color.Transparent,
+                                        Color.Transparent,
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+                }
+
+                // Center disc label (album art / vinyl label)
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary,
@@ -233,11 +301,25 @@ fun FullPlayerSheet(
                     shadowElevation = 6.dp
                 ) {
                     Box(contentAlignment = Alignment.Center) {
+                        // Decorative inner ring on label
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f),
+                            modifier = Modifier.fillMaxSize(0.78f)
+                        ) {}
+
+                        // Rhythmic pulsing & swaying MusicNote icon (stays upright, grooves to beat)
                         Icon(
                             imageVector = Icons.Default.MusicNote,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier
+                                .size(34.dp)
+                                .graphicsLayer {
+                                    scaleX = animatedNoteScale
+                                    scaleY = animatedNoteScale
+                                    rotationZ = animatedNoteSway
+                                }
                         )
                     }
                 }
