@@ -98,12 +98,86 @@ HTML test reports are generated at:
 - **Location**: `app/src/androidTest/java/app/kiddos/musicplayer/`
 - **Runner**: `androidx.test.runner.AndroidJUnitRunner`
 - **Framework**: AndroidX Test JUnit (`1.2.1`), Espresso Core (`3.6.1`), Compose UI Test JUnit 4 (`composeBom`)
+- **Key Test Classes**:
+  - `TabletUiTest.kt`: Instrumented Compose UI tests verifying folder browsing, empty state actions, track playback, MiniPlayer interactions, and FullPlayerSheet controls and transitions.
+  - `ExampleInstrumentedTest.kt`: Package name & context baseline test.
 
 #### Run Connected Tests:
 ```bash
-# Run instrumented tests on an attached device or emulator
+# Run instrumented tests across all attached devices/emulators
 ./gradlew connectedDebugAndroidTest
 ```
+
+### 3.3 Android CLI Testing & UI Automation (`android` CLI)
+
+The project environment is equipped with Google's **Android CLI** (`android`), located at `~/.local/bin/android`. Agents and developers should leverage Android CLI for fast builds, delta deployments, UI inspection, and automated device validation.
+
+#### 1. Environment & Device Status
+```bash
+# Verify SDK and CLI configuration
+android info
+
+# List available virtual devices (AVDs)
+android emulator list
+
+# Check connected physical and virtual devices
+adb devices -l
+```
+
+#### 2. Project Analysis & Delta Deployment
+```bash
+# Inspect project build targets and APK artifacts
+android describe
+
+# Assemble debug APK
+./gradlew assembleDebug
+
+# Deploy and launch the app on a specific device/emulator (supports fast delta install)
+android run --device=emulator-5554 --apks=app/build/outputs/apk/debug/app-debug.apk
+```
+
+#### 3. UI Inspection & Interaction
+```bash
+# Capture full UI accessibility/layout tree in JSON format
+android layout --device=emulator-5554 --pretty
+
+# IMPORTANT: During audio playback, MiniPlayer's progress bar produces continuous animation events.
+# Always pass '--no-idle' to prevent timeout when inspecting layout during active playback:
+android layout --device=emulator-5554 --no-idle --pretty
+
+# Capture device screen to file for visual inspection
+android screen capture --device=emulator-5554 -o /tmp/screen.png
+
+# Interact with UI elements using center coordinates obtained from 'android layout'
+adb -s emulator-5554 shell input tap <X> <Y>
+```
+
+#### 4. Automated Permission Granting
+For headless/automated testing without manual dialog clicks:
+```bash
+adb -s emulator-5554 shell pm grant app.kiddos.musicplayer android.permission.READ_MEDIA_AUDIO
+adb -s emulator-5554 shell pm grant app.kiddos.musicplayer android.permission.POST_NOTIFICATIONS
+```
+
+#### 5. Running Instrumented Tests via Android CLI / ADB Runner
+To target a specific emulator/device directly (bypassing multi-device conflicts):
+```bash
+# Build app and test APKs
+./gradlew assembleDebug assembleDebugAndroidTest
+
+# Install both APKs on target device
+android install --device=emulator-5554 --apks=app/build/outputs/apk/debug/app-debug.apk
+android install --device=emulator-5554 --apks=app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+
+# Execute all instrumented tests
+adb -s emulator-5554 shell am instrument -w -r app.kiddos.musicplayer.test/androidx.test.runner.AndroidJUnitRunner
+
+# Execute a specific test class
+adb -s emulator-5554 shell am instrument -w -r -e class app.kiddos.musicplayer.TabletUiTest app.kiddos.musicplayer.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+> [!NOTE]
+> On certain physical Android 16 developer builds, Espresso's reflection on `InputManager.getInstance` may be restricted. When running instrumented Compose UI tests, use the standard emulator AVDs (such as `Pixel_6` or `Pixel_Tablet`), where tests pass 100%.
 
 ---
 
