@@ -7,6 +7,7 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.documentfile.provider.DocumentFile
 import app.kiddos.musicplayer.model.AudioFile
@@ -208,8 +209,62 @@ class MusicScanner(private val context: Context? = null) {
 
     internal fun isRootBucketName(name: String): Boolean {
         val lower = name.trim().lowercase()
-        return lower in listOf("0", "root", "emulated", "sdcard", "legacy", "primary", "/", ".") ||
-                lower.matches(Regex("^[0-9a-f]{4}-[0-9a-f]{4}$"))
+        return lower in listOf(
+            "0", "root", "emulated", "sdcard", "legacy", "primary", "/", ".",
+            "internal storage", "internal shared storage", "storage", "device", "phone", "phone storage"
+        ) || lower.matches(Regex("^[0-9a-f]{4}-[0-9a-f]{4}$"))
+    }
+
+    internal fun resolveDocIdToPath(docId: String): String? {
+        val decodedDocId = try {
+            java.net.URLDecoder.decode(docId, "UTF-8")
+        } catch (e: Exception) {
+            docId
+        }
+        val colonIndex = decodedDocId.indexOf(':')
+        if (colonIndex == -1) return null
+        val volume = decodedDocId.substring(0, colonIndex)
+        val relPath = decodedDocId.substring(colonIndex + 1).trimStart('/')
+        val basePath = if (volume.equals("primary", ignoreCase = true)) {
+            val root = try {
+                Environment.getExternalStorageDirectory()?.absolutePath?.trimEnd('/')
+            } catch (t: Throwable) {
+                null
+            }
+            root ?: "/storage/emulated/0"
+        } else {
+            "/storage/$volume"
+        }
+        return if (relPath.isEmpty()) basePath else "$basePath/$relPath"
+    }
+
+    internal fun resolvePathFromUri(uri: Uri): String? {
+        if (uri.authority == "com.android.externalstorage.documents") {
+            val ctx = context
+            val docIdFromContract = try {
+                if (ctx != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && DocumentsContract.isTreeUri(uri)) {
+                    if (uri.path?.contains("/document/") == true) {
+                        DocumentsContract.getDocumentId(uri)
+                    } else {
+                        DocumentsContract.getTreeDocumentId(uri)
+                    }
+                } else if (ctx != null && DocumentsContract.isDocumentUri(ctx, uri)) {
+                    DocumentsContract.getDocumentId(uri)
+                } else {
+                    null
+                }
+            } catch (e: Throwable) {
+                null
+            }
+
+            val rawDocId = docIdFromContract
+                ?: uri.path?.substringAfter("/document/")?.ifEmpty { null }
+                ?: uri.path?.substringAfter("/tree/")?.ifEmpty { null }
+                ?: return null
+
+            return resolveDocIdToPath(rawDocId)
+        }
+        return null
     }
 
     private fun scanPublicDirectoriesDirectly(): List<AudioFile> {
@@ -341,8 +396,14 @@ class MusicScanner(private val context: Context? = null) {
         }
 
         val songs = mutableListOf<AudioFile>()
+        val initialPath = resolvePathFromUri(treeUri)
         val initialName = docFile.name
-        val isRoot = initialName.isNullOrBlank() || isRootBucketName(initialName)
+        val isRoot = (initialPath != null && isNotInAnyFolder(File(initialPath))) ||
+                initialName.isNullOrBlank() ||
+                isRootBucketName(initialName) ||
+                treeUri.path?.endsWith("%3A") == true ||
+                treeUri.path?.endsWith(":") == true
+
         val rootFolderName = if (isRoot) MusicFolder.NO_FOLDER_NAME else (initialName ?: MusicFolder.NO_FOLDER_NAME)
         scanDocumentFileRecursively(docFile, songs, rootFolderName, isTopLevel = true)
         groupAndSortIntoFolders(songs)
@@ -372,6 +433,13 @@ class MusicScanner(private val context: Context? = null) {
                 } catch (ignored: Exception) {
                 }
 
+                val realFilePath = resolvePathFromUri(doc.uri)
+                val (folderName, folderPath) = if (!realFilePath.isNullOrBlank()) {
+                    resolveFolderInfo(realFilePath, null, null)
+                } else {
+                    Pair(MusicFolder.NO_FOLDER_NAME, MusicFolder.NO_FOLDER_PATH)
+                }
+
                 songs.add(
                     AudioFile(
                         id = doc.uri.hashCode().toLong(),
@@ -380,9 +448,9 @@ class MusicScanner(private val context: Context? = null) {
                         album = album,
                         durationMs = duration,
                         uri = doc.uri,
-                        path = doc.uri.toString(),
-                        folderName = MusicFolder.NO_FOLDER_NAME,
-                        folderPath = MusicFolder.NO_FOLDER_PATH,
+                        path = realFilePath ?: doc.uri.toString(),
+                        folderName = folderName,
+                        folderPath = folderPath,
                         size = doc.length()
                     )
                 )
@@ -425,15 +493,21 @@ class MusicScanner(private val context: Context? = null) {
                 } catch (ignored: Exception) {
                 }
 
-                val folderName = if (isTopLevel && parentName == MusicFolder.NO_FOLDER_NAME) {
-                    MusicFolder.NO_FOLDER_NAME
+                val realFilePath = resolvePathFromUri(child.uri)
+                val (folderName, folderPath) = if (!realFilePath.isNullOrBlank()) {
+                    resolveFolderInfo(realFilePath, null, null)
                 } else {
-                    parentName
-                }
-                val folderPath = if (folderName == MusicFolder.NO_FOLDER_NAME) {
-                    MusicFolder.NO_FOLDER_PATH
-                } else {
-                    folder.uri.toString()
+                    val fName = if (isTopLevel && parentName == MusicFolder.NO_FOLDER_NAME) {
+                        MusicFolder.NO_FOLDER_NAME
+                    } else {
+                        parentName
+                    }
+                    val fPath = if (fName == MusicFolder.NO_FOLDER_NAME) {
+                        MusicFolder.NO_FOLDER_PATH
+                    } else {
+                        folder.uri.toString()
+                    }
+                    Pair(fName, fPath)
                 }
 
                 outList.add(
@@ -444,7 +518,7 @@ class MusicScanner(private val context: Context? = null) {
                         album = album,
                         durationMs = duration,
                         uri = child.uri,
-                        path = child.uri.toString(),
+                        path = realFilePath ?: child.uri.toString(),
                         folderName = folderName,
                         folderPath = folderPath,
                         size = child.length()

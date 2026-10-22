@@ -44,6 +44,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     val isShuffle: StateFlow<Boolean> = playerManager.isShuffle
     val errorMessage: StateFlow<String?> = playerManager.errorMessage
 
+    private val customFolderUris = mutableSetOf<Uri>()
+    private val customFileUris = mutableSetOf<Uri>()
+
     fun updatePermission(granted: Boolean) {
         _hasPermission.value = granted
         if (granted && _folders.value.isEmpty()) {
@@ -55,11 +58,23 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _isScanning.value = true
             try {
-                val scanned = scanner.scanSharedMusic()
+                var scanned = scanner.scanSharedMusic()
+                for (treeUri in customFolderUris) {
+                    val custom = scanner.scanDocumentFolder(treeUri)
+                    if (custom.isNotEmpty()) {
+                        scanned = mergeFolderLists(scanned, custom)
+                    }
+                }
+                for (uris in customFileUris.chunked(50)) {
+                    val custom = scanner.scanDocumentFiles(uris)
+                    if (custom.isNotEmpty()) {
+                        scanned = mergeFolderLists(scanned, custom)
+                    }
+                }
                 _folders.value = scanned
                 // If a folder was selected, update its songs reference
                 _selectedFolder.value?.let { current ->
-                    _selectedFolder.value = scanned.find { it.path == current.path }
+                    _selectedFolder.value = scanned.find { isMatchingFolder(it, current) }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -75,7 +90,14 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val customFolders = scanner.scanDocumentFolder(treeUri)
                 if (customFolders.isNotEmpty()) {
-                    _folders.value = mergeFolderLists(_folders.value, customFolders)
+                    val merged = mergeFolderLists(_folders.value, customFolders)
+                    if (merged != _folders.value) {
+                        customFolderUris.add(treeUri)
+                    }
+                    _folders.value = merged
+                    _selectedFolder.value?.let { current ->
+                        _selectedFolder.value = merged.find { isMatchingFolder(it, current) }
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -92,7 +114,14 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val customFolders = scanner.scanDocumentFiles(uris)
                 if (customFolders.isNotEmpty()) {
-                    _folders.value = mergeFolderLists(_folders.value, customFolders)
+                    val merged = mergeFolderLists(_folders.value, customFolders)
+                    if (merged != _folders.value) {
+                        customFileUris.addAll(uris)
+                    }
+                    _folders.value = merged
+                    _selectedFolder.value?.let { current ->
+                        _selectedFolder.value = merged.find { isMatchingFolder(it, current) }
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -102,25 +131,118 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun mergeFolderLists(
-        existing: List<MusicFolder>,
-        incoming: List<MusicFolder>
-    ): List<MusicFolder> {
-        val folderMap = existing.associateBy { it.path }.toMutableMap()
-        for (folder in incoming) {
-            val current = folderMap[folder.path]
-            if (current != null) {
-                val combinedSongs = (current.songs + folder.songs).distinctBy { it.id }
-                folderMap[folder.path] = current.copy(
-                    songs = combinedSongs.sortedBy { it.title.lowercase() }
-                )
-            } else {
-                folderMap[folder.path] = folder
+    companion object {
+        internal fun mergeFolderLists(
+            existing: List<MusicFolder>,
+            incoming: List<MusicFolder>
+        ): List<MusicFolder> {
+            if (incoming.isEmpty()) return existing
+            if (existing.isEmpty()) return incoming
+
+            val resultFolders = existing.map { it.copy(songs = it.songs.toMutableList()) }.toMutableList()
+
+            for (incomingFolder in incoming) {
+                val matchedFolder = resultFolders.find { isMatchingFolder(it, incomingFolder) }
+                if (matchedFolder != null) {
+                    val updatedSongs = matchedFolder.songs.toMutableList()
+                    for (incomingSong in incomingFolder.songs) {
+                        val alreadyInFolder = updatedSongs.any { isSameSong(it, incomingSong) }
+                        if (!alreadyInFolder) {
+                            updatedSongs.add(incomingSong)
+                        }
+                    }
+                    val index = resultFolders.indexOf(matchedFolder)
+                    resultFolders[index] = matchedFolder.copy(
+                        songs = updatedSongs.sortedBy { it.title.lowercase() }
+                    )
+                } else {
+                    val trulyNewSongs = incomingFolder.songs.filter { incSong ->
+                        resultFolders.none { folder -> folder.songs.any { isSameSong(it, incSong) } }
+                    }
+                    if (trulyNewSongs.isNotEmpty()) {
+                        resultFolders.add(
+                            incomingFolder.copy(
+                                songs = trulyNewSongs.sortedBy { it.title.lowercase() }
+                            )
+                        )
+                    }
+                }
             }
+
+            return resultFolders.sortedWith(
+                compareBy<MusicFolder> { !it.isNoFolder }.thenBy { it.name.lowercase() }
+            )
         }
-        return folderMap.values.sortedWith(
-            compareBy<MusicFolder> { !it.isNoFolder }.thenBy { it.name.lowercase() }
-        )
+
+        internal fun isSameSong(a: AudioFile, b: AudioFile): Boolean {
+            if (a.id == b.id) return true
+
+            val aCleanPath = a.path.removePrefix("file://").trim()
+            val bCleanPath = b.path.removePrefix("file://").trim()
+            if (aCleanPath.isNotBlank() && bCleanPath.isNotBlank() && aCleanPath.equals(bCleanPath, ignoreCase = true)) {
+                return true
+            }
+
+            if (a.uri != null && b.uri != null && a.uri == b.uri) {
+                return true
+            }
+
+            val aFileName = aCleanPath.substringAfterLast('/').substringAfterLast("%2F").substringAfterLast(':')
+            val bFileName = bCleanPath.substringAfterLast('/').substringAfterLast("%2F").substringAfterLast(':')
+            if (aFileName.isNotBlank() && aFileName.equals(bFileName, ignoreCase = true)) {
+                if (a.size > 0L && b.size > 0L && a.size == b.size) return true
+                if (a.durationMs > 0L && b.durationMs > 0L && kotlin.math.abs(a.durationMs - b.durationMs) <= 1500L) return true
+            }
+
+            if (a.title.isNotBlank() && a.title.equals(b.title, ignoreCase = true)) {
+                if (a.size > 0L && b.size > 0L && a.size == b.size) return true
+                val durationClose = a.durationMs > 0L && b.durationMs > 0L && kotlin.math.abs(a.durationMs - b.durationMs) <= 2000L
+                val artistMatches = a.artist.equals(b.artist, ignoreCase = true) ||
+                        isUnknownArtist(a.artist) || isUnknownArtist(b.artist)
+                if (durationClose && artistMatches) return true
+            }
+
+            return false
+        }
+
+        private fun isUnknownArtist(artist: String?): Boolean {
+            if (artist.isNullOrBlank()) return true
+            val lower = artist.trim().lowercase()
+            return lower in listOf("unknown", "unknown artist", "<unknown>", "<unknown artist>")
+        }
+
+        internal fun isMatchingFolder(existing: MusicFolder, incoming: MusicFolder): Boolean {
+            if (existing.isNoFolder && incoming.isNoFolder) return true
+            if (existing.path == MusicFolder.NO_FOLDER_PATH && incoming.path == MusicFolder.NO_FOLDER_PATH) return true
+            if (existing.name.equals(MusicFolder.NO_FOLDER_NAME, ignoreCase = true) &&
+                incoming.name.equals(MusicFolder.NO_FOLDER_NAME, ignoreCase = true)) return true
+
+            val existingClean = existing.path.removePrefix("file://").trimEnd('/')
+            val incomingClean = incoming.path.removePrefix("file://").trimEnd('/')
+            if (existingClean.isNotBlank() && incomingClean.isNotBlank() &&
+                existingClean.equals(incomingClean, ignoreCase = true)) return true
+
+            val bothAreFilePaths = existingClean.startsWith('/') && incomingClean.startsWith('/')
+            if (bothAreFilePaths && !existingClean.equals(incomingClean, ignoreCase = true)) {
+                return incoming.songs.any { incSong -> existing.songs.any { exSong -> isSameSong(exSong, incSong) } }
+            }
+
+            val existingLast = existingClean.substringAfterLast('/').substringAfterLast(':')
+            val incomingLast = incomingClean.substringAfterLast('/').substringAfterLast(':')
+            if (existingLast.isNotBlank() && existingLast.equals(incomingLast, ignoreCase = true)) {
+                if (existing.name.equals(incoming.name, ignoreCase = true)) return true
+            }
+
+            if (existing.name.isNotBlank() && existing.name.equals(incoming.name, ignoreCase = true)) {
+                return true
+            }
+
+            if (incoming.songs.any { incSong -> existing.songs.any { exSong -> isSameSong(exSong, incSong) } }) {
+                return true
+            }
+
+            return false
+        }
     }
 
     fun selectFolder(folder: MusicFolder) {
