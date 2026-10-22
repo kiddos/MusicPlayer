@@ -12,9 +12,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.isActive
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
+import app.kiddos.musicplayer.ui.theme.getFolderGradient
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -34,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
@@ -124,38 +128,26 @@ fun FullPlayerSheet(
         }
     }
 
-    // Music note lively rhythmic groove & pulse animation
-    val noteTransition = rememberInfiniteTransition(label = "MusicNoteGroove")
-    val pulseScale by noteTransition.animateFloat(
+    // Subtle rhythmic pulse when playing
+    val iconTransition = rememberInfiniteTransition(label = "VinylCenterIconPulse")
+    val pulseScale by iconTransition.animateFloat(
         initialValue = 1.0f,
-        targetValue = 1.16f,
+        targetValue = 1.08f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 850, easing = FastOutSlowInEasing),
+            animation = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
             repeatMode = AnimRepeatMode.Reverse
         ),
-        label = "NotePulseScale"
-    )
-    val swayAngle by noteTransition.animateFloat(
-        initialValue = -8f,
-        targetValue = 8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1700, easing = FastOutSlowInEasing),
-            repeatMode = AnimRepeatMode.Reverse
-        ),
-        label = "NoteSwayAngle"
+        label = "IconPulseScale"
     )
 
-    // Smooth return to upright rest position when playback is paused
-    val animatedNoteScale by animateFloatAsState(
+    // Smooth return to default scale when paused
+    val animatedIconScale by animateFloatAsState(
         targetValue = if (isPlaying) pulseScale else 1f,
         animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
-        label = "RestNoteScale"
+        label = "RestIconScale"
     )
-    val animatedNoteSway by animateFloatAsState(
-        targetValue = if (isPlaying) swayAngle else 0f,
-        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
-        label = "RestNoteSway"
-    )
+
+    val songGradient = getFolderGradient(song.folderName, song.folderName == MusicFolder.NO_FOLDER_NAME)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -202,14 +194,20 @@ fun FullPlayerSheet(
                 Spacer(modifier = Modifier.weight(1f))
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = stringResource(R.string.playing_from_folder),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = songGradient.start.copy(alpha = 0.12f),
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.playing_from_folder),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = songGradient.start,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
                     val folderDisplayName = if (song.folderName == MusicFolder.NO_FOLDER_NAME) {
                         stringResource(R.string.no_folder_name)
                     } else {
@@ -232,93 +230,110 @@ fun FullPlayerSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Animated Vinyl Record Artwork
+            // Animated Vinyl Record Artwork with soft colored ambient aura
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.68f)
-                    .aspectRatio(1f)
-                    .shadow(20.dp, CircleShape)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                MaterialTheme.colorScheme.surfaceVariant,
-                                MaterialTheme.colorScheme.surfaceTint.copy(alpha = 0.85f)
-                            )
-                        )
-                    ),
+                    .fillMaxWidth(0.72f)
+                    .aspectRatio(1f),
                 contentAlignment = Alignment.Center
             ) {
-                // Spinning vinyl layer (grooves and realistic specular sheen)
+                // Colored ambient glow behind vinyl
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(0.92f)
+                        .shadow(28.dp, CircleShape, spotColor = songGradient.start, ambientColor = songGradient.end)
+                )
+
+                // Vinyl Body
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .rotate(vinylRotation.value),
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(
+                                    Color(0xFF252936),
+                                    Color(0xFF141721),
+                                    Color(0xFF0B0D13)
+                                )
+                            )
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    // Vinyl grooves
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-                        modifier = Modifier.fillMaxSize(0.85f)
-                    ) {}
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                        modifier = Modifier.fillMaxSize(0.65f)
-                    ) {}
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.22f),
-                        modifier = Modifier.fillMaxSize(0.48f)
-                    ) {}
-
-                    // Specular sheen light reflection across grooves
+                    // Spinning vinyl grooves
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(
-                                Brush.sweepGradient(
-                                    listOf(
-                                        Color.Transparent,
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                                        Color.Transparent,
-                                        Color.Transparent,
-                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
-                    )
-                }
-
-                // Center disc label (album art / vinyl label)
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.fillMaxSize(0.32f),
-                    shadowElevation = 6.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        // Decorative inner ring on label
+                            .rotate(vinylRotation.value),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f),
-                            modifier = Modifier.fillMaxSize(0.78f)
+                            color = Color.White.copy(alpha = 0.05f),
+                            modifier = Modifier.fillMaxSize(0.86f)
+                        ) {}
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.08f),
+                            modifier = Modifier.fillMaxSize(0.68f)
+                        ) {}
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.12f),
+                            modifier = Modifier.fillMaxSize(0.50f)
                         ) {}
 
-                        // Rhythmic pulsing & swaying MusicNote icon (stays upright, grooves to beat)
-                        Icon(
-                            imageVector = Icons.Default.MusicNote,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
+                        // Specular sheen light reflection across grooves
+                        Box(
                             modifier = Modifier
-                                .size(34.dp)
+                                .fillMaxSize()
+                                .background(
+                                    Brush.sweepGradient(
+                                        listOf(
+                                            Color.Transparent,
+                                            Color.White.copy(alpha = 0.14f),
+                                            Color.Transparent,
+                                            Color.Transparent,
+                                            Color.White.copy(alpha = 0.14f),
+                                            Color.Transparent
+                                        )
+                                    )
+                                )
+                        )
+                    }
+
+                    // Center disc label (album art / vinyl label) with vibrant gradient!
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(0.38f)
+                            .clip(CircleShape)
+                            .background(songGradient.toBrush())
+                            .shadow(8.dp, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Concentric decorative rings on label
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.15f),
+                            modifier = Modifier.fillMaxSize(0.84f)
+                        ) {}
+
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.25f),
+                            modifier = Modifier.fillMaxSize(0.68f)
+                        ) {}
+
+                        // Clean, balanced, symmetrical Headphones icon
+                        Icon(
+                            imageVector = Icons.Default.Headphones,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(38.dp)
                                 .graphicsLayer {
-                                    scaleX = animatedNoteScale
-                                    scaleY = animatedNoteScale
-                                    rotationZ = animatedNoteSway
+                                    scaleX = animatedIconScale
+                                    scaleY = animatedIconScale
                                 }
                         )
                     }
@@ -426,20 +441,33 @@ fun FullPlayerSheet(
                 }
 
                 // Play / Pause Button
-                FilledIconButton(
-                    onClick = onPlayPause,
-                    modifier = Modifier.size(72.dp),
-                    shape = CircleShape,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                Box(
+                    modifier = Modifier
+                        .size(74.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play),
-                        modifier = Modifier.size(40.dp)
-                    )
+                    IconButton(
+                        onClick = onPlayPause,
+                        modifier = Modifier.size(74.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play),
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .then(if (!isPlaying) Modifier.offset(x = 2.dp) else Modifier)
+                        )
+                    }
                 }
 
                 // Next Button
@@ -491,7 +519,8 @@ fun FullPlayerSheet(
             // Audio Metadata & Folder Details Card
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, songGradient.start.copy(alpha = 0.25f)),
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
             ) {
                 Column(
@@ -503,7 +532,7 @@ fun FullPlayerSheet(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Text(
@@ -511,39 +540,40 @@ fun FullPlayerSheet(
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
                             )
                         }
 
                         if (song.formattedSize.isNotBlank()) {
                             Surface(
-                                shape = RoundedCornerShape(6.dp),
+                                shape = RoundedCornerShape(8.dp),
                                 color = MaterialTheme.colorScheme.secondaryContainer
                             ) {
                                 Text(
                                     text = song.formattedSize,
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Medium,
+                                    fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
                                 )
                             }
                         }
 
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHighest
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer
                         ) {
                             Text(
                                 text = stringResource(R.string.tag_stereo),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -551,10 +581,10 @@ fun FullPlayerSheet(
                         Icon(
                             imageVector = Icons.Default.Folder,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
+                            tint = songGradient.start,
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         val displayFolderPath = if (song.folderName == MusicFolder.NO_FOLDER_NAME) {
                             stringResource(R.string.no_folder_display_path)
                         } else {

@@ -3,10 +3,14 @@ package app.kiddos.musicplayer.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import app.kiddos.musicplayer.ui.theme.getFolderGradient
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -65,14 +69,17 @@ fun MiniPlayer(
         modifier = modifier
     ) {
         if (currentSong != null) {
+            val songGradient = getFolderGradient(currentSong.folderName, currentSong.folderName == MusicFolder.NO_FOLDER_NAME)
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(horizontal = 8.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(18.dp))
                     .clickable(onClick = onClick),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, songGradient.start.copy(alpha = 0.35f)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -88,9 +95,9 @@ fun MiniPlayer(
                         progress = { progress },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(3.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                            .height(3.5.dp),
+                        color = songGradient.start,
+                        trackColor = songGradient.start.copy(alpha = 0.15f)
                     )
 
                     Row(
@@ -100,19 +107,19 @@ fun MiniPlayer(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Album icon thumbnail
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(44.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(songGradient.toBrush()),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = if (isPlaying) Icons.Default.Equalizer else Icons.Default.MusicNote,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                            Icon(
+                                imageVector = if (isPlaying) Icons.Default.Equalizer else Icons.Default.MusicNote,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(12.dp))
@@ -148,14 +155,21 @@ fun MiniPlayer(
                         IconButton(
                             onClick = onPlayPause,
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(42.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.primary,
+                                            MaterialTheme.colorScheme.tertiary
+                                        )
+                                    )
+                                )
                         ) {
                             Icon(
                                 imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                 contentDescription = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play),
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = Color.White,
                                 modifier = Modifier.size(24.dp)
                             )
                         }

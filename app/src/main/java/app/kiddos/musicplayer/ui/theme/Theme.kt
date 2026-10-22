@@ -1,6 +1,5 @@
 package app.kiddos.musicplayer.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -12,32 +11,48 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = VibrantPrimaryDark,
+    onPrimary = VibrantOnPrimaryDark,
+    primaryContainer = VibrantPrimaryContainerDark,
+    onPrimaryContainer = VibrantOnPrimaryContainerDark,
+    secondary = VibrantSecondaryDark,
+    onSecondary = VibrantOnSecondaryDark,
+    secondaryContainer = VibrantSecondaryContainerDark,
+    onSecondaryContainer = VibrantOnSecondaryContainerDark,
+    tertiary = VibrantTertiaryDark,
+    onTertiary = VibrantOnTertiaryDark,
+    tertiaryContainer = VibrantTertiaryContainerDark,
+    onTertiaryContainer = VibrantOnTertiaryContainerDark,
+    background = VibrantBackgroundDark,
+    surface = VibrantSurfaceDark,
+    surfaceVariant = VibrantSurfaceVariantDark,
+    outline = VibrantOutlineDark
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    primary = VibrantPrimaryLight,
+    onPrimary = VibrantOnPrimaryLight,
+    primaryContainer = VibrantPrimaryContainerLight,
+    onPrimaryContainer = VibrantOnPrimaryContainerLight,
+    secondary = VibrantSecondaryLight,
+    onSecondary = VibrantOnSecondaryLight,
+    secondaryContainer = VibrantSecondaryContainerLight,
+    onSecondaryContainer = VibrantOnSecondaryContainerLight,
+    tertiary = VibrantTertiaryLight,
+    onTertiary = VibrantOnTertiaryLight,
+    tertiaryContainer = VibrantTertiaryContainerLight,
+    onTertiaryContainer = VibrantOnTertiaryContainerLight,
+    background = VibrantBackgroundLight,
+    surface = VibrantSurfaceLight,
+    surfaceVariant = VibrantSurfaceVariantLight,
+    outline = VibrantOutlineLight
 )
 
 @Composable
 fun MusicPlayerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Keep dynamicColor false by default to showcase our beautiful bespoke vibrant music palette
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -45,7 +60,6 @@ fun MusicPlayerTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }

@@ -1,5 +1,6 @@
 package app.kiddos.musicplayer.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import app.kiddos.musicplayer.ui.theme.getFolderGradient
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -100,36 +104,60 @@ fun FolderListScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.music_folders),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        val totalSongs = folders.sumOf { it.songCount }
-                        val regularFolderCount = folders.count { !it.isNoFolder }
-                        val hasNoFolder = folders.any { it.isNoFolder }
-                        val folderText = when {
-                            regularFolderCount == 0 && hasNoFolder -> stringResource(R.string.folder_summary_root_only)
-                            regularFolderCount == 1 && !hasNoFolder -> stringResource(R.string.folder_summary_single)
-                            regularFolderCount == 1 && hasNoFolder -> stringResource(R.string.folder_summary_single_plus_root)
-                            hasNoFolder -> stringResource(R.string.folder_summary_multiple_plus_root, regularFolderCount)
-                            else -> stringResource(R.string.folder_summary_multiple, regularFolderCount)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(11.dp))
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.primary,
+                                            MaterialTheme.colorScheme.tertiary
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MusicNote,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
-                        val songsText = if (totalSongs == 1) {
-                            stringResource(R.string.song_summary_single)
-                        } else {
-                            stringResource(R.string.song_summary_multiple, totalSongs)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = stringResource(R.string.music_folders),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            val totalSongs = folders.sumOf { it.songCount }
+                            val regularFolderCount = folders.count { !it.isNoFolder }
+                            val hasNoFolder = folders.any { it.isNoFolder }
+                            val folderText = when {
+                                regularFolderCount == 0 && hasNoFolder -> stringResource(R.string.folder_summary_root_only)
+                                regularFolderCount == 1 && !hasNoFolder -> stringResource(R.string.folder_summary_single)
+                                regularFolderCount == 1 && hasNoFolder -> stringResource(R.string.folder_summary_single_plus_root)
+                                hasNoFolder -> stringResource(R.string.folder_summary_multiple_plus_root, regularFolderCount)
+                                else -> stringResource(R.string.folder_summary_multiple, regularFolderCount)
+                            }
+                            val songsText = if (totalSongs == 1) {
+                                stringResource(R.string.song_summary_single)
+                            } else {
+                                stringResource(R.string.song_summary_multiple, totalSongs)
+                            }
+                            Text(
+                                text = stringResource(R.string.summary_combined, folderText, songsText),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
-                        Text(
-                            text = stringResource(R.string.summary_combined, folderText, songsText),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
                 },
                 actions = {
@@ -211,19 +239,26 @@ fun FolderListScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            modifier = Modifier.size(80.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(84.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.primary,
+                                            MaterialTheme.colorScheme.tertiary
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Folder,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(40.dp)
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Folder,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(42.dp)
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(20.dp))
@@ -312,14 +347,17 @@ fun FolderCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val gradient = getFolderGradient(folder.name, folder.isNoFolder)
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, gradient.start.copy(alpha = 0.25f)),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
         )
     ) {
         Row(
@@ -328,27 +366,19 @@ fun FolderCard(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = if (folder.isNoFolder) {
-                    MaterialTheme.colorScheme.tertiaryContainer
-                } else {
-                    MaterialTheme.colorScheme.primaryContainer
-                },
-                modifier = Modifier.size(50.dp)
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(gradient.toBrush()),
+                contentAlignment = Alignment.Center
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (folder.isNoFolder) Icons.Default.MusicNote else Icons.Default.Folder,
-                        contentDescription = null,
-                        tint = if (folder.isNoFolder) {
-                            MaterialTheme.colorScheme.tertiary
-                        } else {
-                            MaterialTheme.colorScheme.primary
-                        },
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
+                Icon(
+                    imageVector = if (folder.isNoFolder) Icons.Default.MusicNote else Icons.Default.Folder,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
+                )
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -385,11 +415,7 @@ fun FolderCard(
 
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = if (folder.isNoFolder) {
-                    MaterialTheme.colorScheme.tertiaryContainer
-                } else {
-                    MaterialTheme.colorScheme.secondaryContainer
-                },
+                color = gradient.start.copy(alpha = 0.14f),
                 modifier = Modifier.padding(end = 4.dp)
             ) {
                 val badgeText = if (folder.songCount == 1) {
@@ -400,12 +426,8 @@ fun FolderCard(
                 Text(
                     text = badgeText,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (folder.isNoFolder) {
-                        MaterialTheme.colorScheme.onTertiaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                    },
-                    fontWeight = FontWeight.Medium,
+                    color = gradient.start,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
@@ -413,7 +435,7 @@ fun FolderCard(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = stringResource(R.string.cd_open_folder),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = gradient.start.copy(alpha = 0.7f)
             )
         }
     }
@@ -425,14 +447,17 @@ fun FolderGridCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val gradient = getFolderGradient(folder.name, folder.isNoFolder)
+
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, gradient.start.copy(alpha = 0.25f)),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
         )
     ) {
         Column(
@@ -445,36 +470,24 @@ fun FolderGridCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (folder.isNoFolder) {
-                        MaterialTheme.colorScheme.tertiaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.primaryContainer
-                    },
-                    modifier = Modifier.size(46.dp)
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(gradient.toBrush()),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = if (folder.isNoFolder) Icons.Default.MusicNote else Icons.Default.Folder,
-                            contentDescription = null,
-                            tint = if (folder.isNoFolder) {
-                                MaterialTheme.colorScheme.tertiary
-                            } else {
-                                MaterialTheme.colorScheme.primary
-                            },
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = if (folder.isNoFolder) Icons.Default.MusicNote else Icons.Default.Folder,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
+                    )
                 }
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = if (folder.isNoFolder) {
-                        MaterialTheme.colorScheme.tertiaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.secondaryContainer
-                    }
+                    color = gradient.start.copy(alpha = 0.14f)
                 ) {
                     val badgeText = if (folder.songCount == 1) {
                         stringResource(R.string.badge_song_count_single)
@@ -484,12 +497,8 @@ fun FolderGridCard(
                     Text(
                         text = badgeText,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (folder.isNoFolder) {
-                            MaterialTheme.colorScheme.onTertiaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSecondaryContainer
-                        },
-                        fontWeight = FontWeight.Medium,
+                        color = gradient.start,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                     )
                 }

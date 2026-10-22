@@ -1,6 +1,8 @@
 package app.kiddos.musicplayer.ui.screens
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,11 +22,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Equalizer
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import app.kiddos.musicplayer.ui.theme.getFolderGradient
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -63,38 +71,57 @@ fun SongListScreen(
     bottomPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
+    val folderGradient = getFolderGradient(folder.name, folder.isNoFolder)
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        val folderDisplayName = if (folder.isNoFolder) {
-                            stringResource(R.string.no_folder_name)
-                        } else {
-                            folder.name
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(11.dp))
+                                .background(folderGradient.toBrush()),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (folder.isNoFolder) Icons.Default.MusicNote else Icons.Default.Folder,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
-                        Text(
-                            text = folderDisplayName,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        val countText = if (folder.songCount == 1) {
-                            stringResource(R.string.song_count_single)
-                        } else {
-                            stringResource(R.string.song_count_multiple, folder.songCount)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            val folderDisplayName = if (folder.isNoFolder) {
+                                stringResource(R.string.no_folder_name)
+                            } else {
+                                folder.name
+                            }
+                            Text(
+                                text = folderDisplayName,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            val countText = if (folder.songCount == 1) {
+                                stringResource(R.string.song_count_single)
+                            } else {
+                                stringResource(R.string.song_count_multiple, folder.songCount)
+                            }
+                            val subtitleText = if (folder.isNoFolder) {
+                                stringResource(R.string.root_storage_subtitle, countText)
+                            } else {
+                                countText
+                            }
+                            Text(
+                                text = subtitleText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        val subtitleText = if (folder.isNoFolder) {
-                            stringResource(R.string.root_storage_subtitle, countText)
-                        } else {
-                            countText
-                        }
-                        Text(
-                            text = subtitleText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 },
                 navigationIcon = {
@@ -130,21 +157,49 @@ fun SongListScreen(
                     ) {
                         Button(
                             onClick = onPlayAllClick,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent
+                            ),
+                            contentPadding = PaddingValues(0.dp)
                         ) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(stringResource(R.string.btn_play_all))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(
+                                                MaterialTheme.colorScheme.primary,
+                                                MaterialTheme.colorScheme.tertiary
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(stringResource(R.string.btn_play_all), color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                         FilledTonalButton(
                             onClick = onShuffleAllClick,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f),
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                         ) {
-                            Icon(Icons.Default.Shuffle, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Default.Shuffle, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.secondary)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(stringResource(R.string.btn_shuffle))
+                            Text(stringResource(R.string.btn_shuffle), fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -175,9 +230,9 @@ fun SongItem(
 ) {
     val containerColor by animateColorAsState(
         targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
         } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
         },
         label = "SongItemContainerColor"
     )
@@ -185,9 +240,10 @@ fun SongItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
+        border = if (isSelected) BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)) else null,
         colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
         Row(
@@ -198,9 +254,9 @@ fun SongItem(
         ) {
             // Index / Playing indicator icon
             Surface(
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(10.dp),
                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(42.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     if (isPlaying) {
@@ -264,11 +320,17 @@ fun SongItem(
                 )
                 if (song.formattedSize.isNotBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = song.formattedSize,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.outline
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                    ) {
+                        Text(
+                            text = song.formattedSize,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                        )
+                    }
                 }
             }
         }
