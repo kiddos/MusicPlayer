@@ -61,6 +61,7 @@ fun MusicApp(
 
     val folders by viewModel.folders.collectAsState()
     val isScanning by viewModel.isScanning.collectAsState()
+    val isGridView by viewModel.isGridView.collectAsState()
     val selectedFolder by viewModel.selectedFolder.collectAsState()
     val hasPermission by viewModel.hasPermission.collectAsState()
     val currentLanguage by viewModel.currentLanguage.collectAsState()
@@ -204,6 +205,8 @@ fun MusicApp(
                     onRescanClick = { viewModel.scanMusic() },
                     onPickFolderClick = { folderPickerLauncher.launch(null) },
                     onPickFilesClick = { filePickerLauncher.launch(arrayOf("audio/*", "application/octet-stream")) },
+                    isGridView = isGridView,
+                    onToggleViewMode = { viewModel.toggleViewMode() },
                     currentLanguage = currentLanguage,
                     onLanguageSelect = { lang -> viewModel.setLanguage(lang) },
                     bottomPadding = innerPadding

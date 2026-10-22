@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -22,8 +25,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
@@ -48,6 +53,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,11 +76,16 @@ fun FolderListScreen(
     onRescanClick: () -> Unit,
     onPickFolderClick: () -> Unit,
     onPickFilesClick: () -> Unit = {},
+    isGridView: Boolean? = null,
+    onToggleViewMode: (() -> Unit)? = null,
     currentLanguage: String = LocaleHelper.LANG_SYSTEM,
     onLanguageSelect: (String) -> Unit = {},
     bottomPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
+    var localIsGridView by rememberSaveable { mutableStateOf(false) }
+    val effectiveIsGridView = isGridView ?: localIsGridView
+    val effectiveToggleView = onToggleViewMode ?: { localIsGridView = !localIsGridView }
     var showLanguageDialog by remember { mutableStateOf(false) }
 
     if (showLanguageDialog) {
@@ -93,7 +104,9 @@ fun FolderListScreen(
                         Text(
                             text = stringResource(R.string.music_folders),
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         val totalSongs = folders.sumOf { it.songCount }
                         val regularFolderCount = folders.count { !it.isNoFolder }
@@ -113,11 +126,32 @@ fun FolderListScreen(
                         Text(
                             text = stringResource(R.string.summary_combined, folderText, songsText),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = effectiveToggleView,
+                        enabled = !isScanning
+                    ) {
+                        Icon(
+                            imageVector = if (effectiveIsGridView) {
+                                Icons.AutoMirrored.Filled.ViewList
+                            } else {
+                                Icons.Default.GridView
+                            },
+                            contentDescription = stringResource(
+                                if (effectiveIsGridView) {
+                                    R.string.cd_switch_to_list
+                                } else {
+                                    R.string.cd_switch_to_grid
+                                }
+                            )
+                        )
+                    }
                     IconButton(
                         onClick = onPickFilesClick,
                         enabled = !isScanning
@@ -254,6 +288,23 @@ fun FolderListScreen(
                     }
                 }
 
+                effectiveIsGridView -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = 140.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(folders, key = { it.path }) { folder ->
+                            FolderGridCard(
+                                folder = folder,
+                                onClick = { onFolderClick(folder) }
+                            )
+                        }
+                    }
+                }
+
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -381,6 +432,115 @@ fun FolderCard(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = stringResource(R.string.cd_open_folder),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun FolderGridCard(
+    folder: MusicFolder,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (folder.isNoFolder) {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.primaryContainer
+                    },
+                    modifier = Modifier.size(46.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (folder.isNoFolder) Icons.Default.MusicNote else Icons.Default.Folder,
+                            contentDescription = null,
+                            tint = if (folder.isNoFolder) {
+                                MaterialTheme.colorScheme.tertiary
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            },
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (folder.isNoFolder) {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    }
+                ) {
+                    val badgeText = if (folder.songCount == 1) {
+                        stringResource(R.string.badge_song_count_single)
+                    } else {
+                        stringResource(R.string.badge_song_count_multiple, folder.songCount)
+                    }
+                    Text(
+                        text = badgeText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (folder.isNoFolder) {
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                        },
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val folderDisplayName = if (folder.isNoFolder) {
+                stringResource(R.string.no_folder_name)
+            } else {
+                folder.name
+            }
+            Text(
+                text = folderDisplayName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            val displayPath = if (folder.isNoFolder) {
+                stringResource(R.string.no_folder_display_path)
+            } else {
+                folder.path
+            }
+            Text(
+                text = displayPath,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

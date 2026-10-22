@@ -15,6 +15,8 @@
     <string name="cd_pick_files">Pick Audio Files</string>
     <string name="cd_pick_folder">Pick Folder</string>
     <string name="cd_rescan">Rescan Shared Folders</string>
+    <string name="cd_switch_to_grid">Switch to grid view</string>
+    <string name="cd_switch_to_list">Switch to list view</string>
     <string name="cd_switch_language">Change Language</string>
     <string name="cd_open_folder">Open Folder</string>
     <string name="cd_back_to_folders">Back to folders</string>

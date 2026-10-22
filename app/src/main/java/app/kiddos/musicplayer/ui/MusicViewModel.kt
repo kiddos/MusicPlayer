@@ -1,6 +1,7 @@
 package app.kiddos.musicplayer.ui
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -20,12 +21,19 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private val scanner = MusicScanner(application)
     private val playerManager = MusicPlayerManager.getInstance(application)
+    private val prefs = application.getSharedPreferences(
+        app.kiddos.musicplayer.util.LocaleHelper.PREFS_NAME,
+        Context.MODE_PRIVATE
+    )
 
     private val _folders = MutableStateFlow<List<MusicFolder>>(emptyList())
     val folders: StateFlow<List<MusicFolder>> = _folders.asStateFlow()
 
     private val _isScanning = MutableStateFlow(false)
     val isScanning: StateFlow<Boolean> = _isScanning.asStateFlow()
+
+    private val _isGridView = MutableStateFlow(prefs.getBoolean("is_grid_view", false))
+    val isGridView: StateFlow<Boolean> = _isGridView.asStateFlow()
 
     private val _selectedFolder = MutableStateFlow<MusicFolder?>(null)
     val selectedFolder: StateFlow<MusicFolder?> = _selectedFolder.asStateFlow()
@@ -293,6 +301,17 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearError() {
         playerManager.clearError()
+    }
+
+    fun toggleViewMode() {
+        val newValue = !_isGridView.value
+        _isGridView.value = newValue
+        prefs.edit().putBoolean("is_grid_view", newValue).apply()
+    }
+
+    fun setViewMode(isGrid: Boolean) {
+        _isGridView.value = isGrid
+        prefs.edit().putBoolean("is_grid_view", isGrid).apply()
     }
 
     fun setLanguage(languageCode: String) {
