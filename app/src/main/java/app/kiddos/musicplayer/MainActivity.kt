@@ -3,6 +3,7 @@ package app.kiddos.musicplayer
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -33,16 +34,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             val currentLanguage by viewModel.currentLanguage.collectAsState()
             val baseContext = LocalContext.current
-            val localizedContext = remember(currentLanguage) {
+            val localizedContext = remember(baseContext, currentLanguage) {
                 LocaleHelper.createLocalizedContext(baseContext, currentLanguage)
             }
-            val localizedConfiguration = remember(currentLanguage) {
+            val localizedConfiguration = remember(baseContext, currentLanguage) {
                 LocaleHelper.createConfiguration(baseContext, currentLanguage)
             }
+            val activityResultRegistryOwner = LocalActivityResultRegistryOwner.current ?: this
 
             CompositionLocalProvider(
                 LocalContext provides localizedContext,
-                LocalConfiguration provides localizedConfiguration
+                LocalConfiguration provides localizedConfiguration,
+                LocalActivityResultRegistryOwner provides activityResultRegistryOwner
             ) {
                 MusicPlayerTheme {
                     MusicApp(viewModel = viewModel)

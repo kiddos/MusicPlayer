@@ -39,4 +39,28 @@ class LanguageSupportTest {
         assertNull(LocaleHelper.getLocale("unknown"))
         assertNull(LocaleHelper.getLocale("fr"))
     }
+
+    @Test
+    fun localeHelper_traditionalChineseVariants_mapToTraditionalChinese() {
+        val zhHantLocale = LocaleHelper.getLocale("zh-Hant")
+        assertNotNull(zhHantLocale)
+        assertEquals("zh", zhHantLocale?.language)
+        assertEquals("TW", zhHantLocale?.country)
+
+        val zhHantTwLocale = LocaleHelper.getLocale("zh-Hant-TW")
+        assertNotNull(zhHantTwLocale)
+        assertEquals("zh", zhHantTwLocale?.language)
+        assertEquals("TW", zhHantTwLocale?.country)
+    }
+
+    @Test
+    fun localizedContextWrapper_isContextWrapper() {
+        val baseContext = android.content.ContextWrapper(null)
+        val dummyContext = android.content.ContextWrapper(null)
+
+        val wrapper = app.kiddos.musicplayer.util.LocalizedContextWrapper(baseContext, dummyContext)
+
+        assertNotNull(wrapper)
+        org.junit.Assert.assertTrue(wrapper is android.content.ContextWrapper)
+    }
 }

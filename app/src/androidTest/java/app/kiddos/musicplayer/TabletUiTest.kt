@@ -206,7 +206,7 @@ class TabletUiTest {
         var toggleRepeatClicked = false
         var toggleShuffleClicked = false
         var dismissed = false
-
+        composeTestRule.mainClock.autoAdvance = false
         composeTestRule.setContent {
             MusicPlayerTheme {
                 FullPlayerSheet(
@@ -226,6 +226,7 @@ class TabletUiTest {
                 )
             }
         }
+        composeTestRule.mainClock.advanceTimeBy(1000)
 
         composeTestRule.onNodeWithText("PLAYING FROM FOLDER").assertIsDisplayed()
         composeTestRule.onNodeWithText("Midnight Drive").assertIsDisplayed()
