@@ -153,24 +153,6 @@ fun FolderListScreen(
                         )
                     }
                     IconButton(
-                        onClick = onPickFilesClick,
-                        enabled = !isScanning
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MusicNote,
-                            contentDescription = stringResource(R.string.cd_pick_files)
-                        )
-                    }
-                    IconButton(
-                        onClick = onPickFolderClick,
-                        enabled = !isScanning
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FolderOpen,
-                            contentDescription = stringResource(R.string.cd_pick_folder)
-                        )
-                    }
-                    IconButton(
                         onClick = onRescanClick,
                         enabled = !isScanning
                     ) {
