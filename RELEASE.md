@@ -1,5 +1,12 @@
 # Release Notes
 
+## Version 1.1
+
+- Headset & Bluetooth controls: Play, pause, and skip tracks directly from your earphones, car audio, or smartwatch.
+- Earbud tap gestures: Single-tap to play/pause, double-tap for next track, triple-tap for previous track.
+- Smarter audio focus: Automatically pauses for incoming phone calls and resumes when finished.
+- Enhanced system media notification and lockscreen controls.
+
 ## Version 1.0.0
 
 Initial release of **Music Player**, a clean, lightweight, directory-based audio player for local music files on Android.
