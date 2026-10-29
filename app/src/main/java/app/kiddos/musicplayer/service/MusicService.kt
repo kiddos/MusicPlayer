@@ -6,23 +6,116 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioManager
 import android.os.Build
 import android.os.IBinder
+import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
+import android.view.KeyEvent
 import androidx.core.app.NotificationCompat
+import androidx.media.session.MediaButtonReceiver
 import app.kiddos.musicplayer.MainActivity
 import app.kiddos.musicplayer.R
 import app.kiddos.musicplayer.model.MusicFolder
+import app.kiddos.musicplayer.playback.MediaButtonHandler
 import app.kiddos.musicplayer.playback.MusicPlayerManager
 import app.kiddos.musicplayer.util.LocaleHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 
 class MusicService : Service() {
 
     private val playerManager by lazy { MusicPlayerManager.getInstance(applicationContext) }
     private var isNoisyReceiverRegistered = false
+    private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
+
+    private lateinit var mediaSession: MediaSessionCompat
+
+    private val mediaButtonHandler by lazy {
+        MediaButtonHandler(
+            scope = serviceScope,
+            onPlay = { playerManager.resume() },
+            onPause = { playerManager.pause() },
+            onPlayPause = { playerManager.playPause() },
+            onNext = { playerManager.next() },
+            onPrevious = { playerManager.previous() },
+            onStop = {
+                playerManager.stopAndRelease()
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            },
+            onFastForward = {
+                val newPos = playerManager.currentPositionMs.value + 10000L
+                playerManager.seekTo(newPos)
+            },
+            onRewind = {
+                val newPos = (playerManager.currentPositionMs.value - 10000L).coerceAtLeast(0L)
+                playerManager.seekTo(newPos)
+            }
+        )
+    }
+
+    private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
+        override fun onPlay() {
+            playerManager.resume()
+        }
+
+        override fun onPause() {
+            playerManager.pause()
+        }
+
+        override fun onSkipToNext() {
+            mediaButtonHandler.handleNext()
+        }
+
+        override fun onSkipToPrevious() {
+            mediaButtonHandler.handlePrevious()
+        }
+
+        override fun onStop() {
+            playerManager.stopAndRelease()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+
+        override fun onSeekTo(pos: Long) {
+            playerManager.seekTo(pos)
+        }
+
+        override fun onFastForward() {
+            val newPos = playerManager.currentPositionMs.value + 10000L
+            playerManager.seekTo(newPos)
+        }
+
+        override fun onRewind() {
+            val newPos = (playerManager.currentPositionMs.value - 10000L).coerceAtLeast(0L)
+            playerManager.seekTo(newPos)
+        }
+
+        override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {
+            val keyEvent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
+            }
+            if (mediaButtonHandler.handleKeyEvent(keyEvent)) {
+                return true
+            }
+            return super.onMediaButtonEvent(mediaButtonEvent)
+        }
+    }
 
     override fun attachBaseContext(newBase: Context) {
         val lang = LocaleHelper.getSavedLanguage(newBase)
@@ -71,11 +164,8 @@ class MusicService : Service() {
         }
 
         fun stop(context: Context) {
-            val intent = Intent(context, MusicService::class.java).apply {
-                action = ACTION_STOP
-            }
             try {
-                context.startService(intent)
+                context.stopService(Intent(context, MusicService::class.java))
             } catch (ignored: Exception) {
             }
         }
@@ -85,13 +175,49 @@ class MusicService : Service() {
         super.onCreate()
         createNotificationChannel()
         registerNoisyReceiver()
+
+        val mbrComponent = ComponentName(this, MediaButtonReceiver::class.java)
+        mediaSession = MediaSessionCompat(this, "MusicService", mbrComponent, null).apply {
+            @Suppress("DEPRECATION")
+            setFlags(
+                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
+                MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+            )
+            val mediaButtonIntent = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
+                component = mbrComponent
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                this@MusicService,
+                0,
+                mediaButtonIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            setMediaButtonReceiver(pendingIntent)
+            setCallback(mediaSessionCallback)
+            isActive = true
+        }
+
+        // Keep media session state and notification synced with player manager
+        serviceScope.launch {
+            combine(playerManager.isPlaying, playerManager.currentSong) { isPlaying, currentSong ->
+                updatePlaybackState()
+                updateMetadata()
+                if (currentSong != null) {
+                    val notification = buildNotification()
+                    val manager = getSystemService(NotificationManager::class.java)
+                    manager?.notify(NOTIFICATION_ID, notification)
+                }
+            }.collect()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        MediaButtonReceiver.handleIntent(mediaSession, intent)
+
         when (intent?.action) {
             ACTION_PLAY_PAUSE -> playerManager.playPause()
-            ACTION_NEXT -> playerManager.next()
-            ACTION_PREV -> playerManager.previous()
+            ACTION_NEXT -> mediaButtonHandler.handleNext()
+            ACTION_PREV -> mediaButtonHandler.handlePrevious()
             ACTION_STOP -> {
                 playerManager.stopAndRelease()
                 stopForeground(STOP_FOREGROUND_REMOVE)
@@ -103,10 +229,50 @@ class MusicService : Service() {
             }
         }
 
+        updatePlaybackState()
+        updateMetadata()
         val notification = buildNotification()
         startForeground(NOTIFICATION_ID, notification)
 
         return START_STICKY
+    }
+
+    private fun updatePlaybackState() {
+        if (!::mediaSession.isInitialized) return
+        val isPlaying = playerManager.isPlaying.value
+        val state = if (isPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED
+        val position = playerManager.currentPositionMs.value
+        val speed = if (isPlaying) 1.0f else 0.0f
+
+        val actions = PlaybackStateCompat.ACTION_PLAY or
+                PlaybackStateCompat.ACTION_PAUSE or
+                PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+                PlaybackStateCompat.ACTION_STOP or
+                PlaybackStateCompat.ACTION_SEEK_TO or
+                PlaybackStateCompat.ACTION_FAST_FORWARD or
+                PlaybackStateCompat.ACTION_REWIND
+
+        val playbackState = PlaybackStateCompat.Builder()
+            .setActions(actions)
+            .setState(state, position, speed)
+            .build()
+
+        mediaSession.setPlaybackState(playbackState)
+    }
+
+    private fun updateMetadata() {
+        if (!::mediaSession.isInitialized) return
+        val song = playerManager.currentSong.value
+        val metadata = MediaMetadataCompat.Builder()
+            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, song?.title ?: getString(R.string.app_name))
+            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, song?.artist ?: "")
+            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, song?.album ?: "")
+            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, song?.durationMs ?: 0L)
+            .build()
+
+        mediaSession.setMetadata(metadata)
     }
 
     private fun buildNotification(): Notification {
@@ -160,7 +326,7 @@ class MusicService : Service() {
             "$artistName • $fName"
         } ?: getString(R.string.no_track_playing)
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(artist)
             .setSmallIcon(android.R.drawable.ic_media_play)
@@ -176,11 +342,15 @@ class MusicService : Service() {
             )
             .addAction(android.R.drawable.ic_media_next, getString(R.string.notification_action_next), nextPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, getString(R.string.notification_action_close), stopPendingIntent)
-            .setStyle(
-                androidx.media.app.NotificationCompat.MediaStyle()
-                    .setShowActionsInCompactView(0, 1, 2)
-            )
-            .build()
+
+        val mediaStyle = androidx.media.app.NotificationCompat.MediaStyle()
+            .setShowActionsInCompactView(0, 1, 2)
+
+        if (::mediaSession.isInitialized) {
+            mediaStyle.setMediaSession(mediaSession.sessionToken)
+        }
+
+        return builder.setStyle(mediaStyle).build()
     }
 
     private fun createNotificationChannel() {
@@ -208,6 +378,12 @@ class MusicService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceScope.cancel()
+        mediaButtonHandler.cancelPendingClicks()
+        if (::mediaSession.isInitialized) {
+            mediaSession.isActive = false
+            mediaSession.release()
+        }
         if (isNoisyReceiverRegistered) {
             try {
                 unregisterReceiver(noisyReceiver)

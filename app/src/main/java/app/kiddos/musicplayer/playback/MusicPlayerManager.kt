@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.PowerManager
+import android.util.Log
 import app.kiddos.musicplayer.model.AudioFile
 import app.kiddos.musicplayer.model.RepeatMode
 import app.kiddos.musicplayer.service.MusicService
@@ -21,8 +22,37 @@ import kotlin.random.Random
 class MusicPlayerManager private constructor(private val appContext: Context) {
 
     private var mediaPlayer: MediaPlayer? = null
+    private var isPreparing = false
+    private var isPrepared = false
+    private var playWhenReady = false
+    private var pendingSeekPositionMs: Long? = null
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private var tickerJob: Job? = null
+    private var resumeOnFocusGain = false
+
+    private val audioFocusHelper = AudioFocusHelper(
+        context = appContext,
+        onFocusLost = {
+            resumeOnFocusGain = false
+            pause()
+        },
+        onFocusLostTransient = {
+            if (_isPlaying.value) {
+                resumeOnFocusGain = true
+                pauseInternal()
+            }
+        },
+        onFocusLostTransientCanDuck = {
+            mediaPlayer?.setVolume(0.2f, 0.2f)
+        },
+        onFocusGained = {
+            mediaPlayer?.setVolume(1.0f, 1.0f)
+            if (resumeOnFocusGain) {
+                resumeOnFocusGain = false
+                resume()
+            }
+        }
+    )
 
     private val _currentSong = MutableStateFlow<AudioFile?>(null)
     val currentSong: StateFlow<AudioFile?> = _currentSong.asStateFlow()
@@ -48,6 +78,8 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private var lastNavTimestamp = 0L
+
     companion object {
         @Volatile
         private var instance: MusicPlayerManager? = null
@@ -68,7 +100,16 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
     }
 
     private fun startPlayback(song: AudioFile) {
+        if (!audioFocusHelper.requestAudioFocus()) {
+            return
+        }
         releasePlayer()
+
+        isPreparing = true
+        isPrepared = false
+        playWhenReady = true
+        _isPlaying.value = true
+
         try {
             val player = MediaPlayer().apply {
                 setWakeMode(appContext, PowerManager.PARTIAL_WAKE_LOCK)
@@ -84,44 +125,71 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
                     setDataSource(song.path)
                 }
                 setOnPreparedListener { mp ->
-                    mp.start()
-                    _isPlaying.value = true
+                    isPreparing = false
+                    isPrepared = true
+
+                    if (mediaPlayer !== mp) return@setOnPreparedListener
+
+                    mp.setVolume(1.0f, 1.0f)
                     _durationMs.value = mp.duration.toLong().coerceAtLeast(song.durationMs)
-                    startPositionTicker()
-                    MusicService.start(appContext)
+
+                    pendingSeekPositionMs?.let { seekPos ->
+                        val target = seekPos.coerceIn(0L, mp.duration.toLong().coerceAtLeast(1L)).toInt()
+                        mp.seekTo(target)
+                        _currentPositionMs.value = target.toLong()
+                        pendingSeekPositionMs = null
+                    }
+
+                    if (playWhenReady) {
+                        mp.start()
+                        _isPlaying.value = true
+                        startPositionTicker()
+                        MusicService.start(appContext)
+                    } else {
+                        _isPlaying.value = false
+                        stopPositionTicker()
+                        MusicService.update(appContext)
+                    }
                 }
                 setOnCompletionListener {
                     handleSongCompletion()
                 }
                 setOnErrorListener { _, what, extra ->
+                    isPreparing = false
+                    isPrepared = false
+                    playWhenReady = false
                     _errorMessage.value = appContext.getString(app.kiddos.musicplayer.R.string.playback_error, what, extra)
                     _isPlaying.value = false
                     stopPositionTicker()
-                    false
+                    true // Return true to indicate error handled and prevent OnCompletionListener from firing
                 }
                 prepareAsync()
             }
             mediaPlayer = player
         } catch (e: Exception) {
             e.printStackTrace()
+            isPreparing = false
+            isPrepared = false
+            playWhenReady = false
             _errorMessage.value = appContext.getString(app.kiddos.musicplayer.R.string.unable_to_play, e.localizedMessage ?: "")
             _isPlaying.value = false
         }
     }
 
     fun playPause() {
+        if (isPreparing) {
+            playWhenReady = !playWhenReady
+            _isPlaying.value = playWhenReady
+            return
+        }
+
         val player = mediaPlayer
-        if (player != null) {
-            if (player.isPlaying) {
-                player.pause()
-                _isPlaying.value = false
-                stopPositionTicker()
-                MusicService.update(appContext)
+        if (player != null && isPrepared) {
+            val isCurrentlyPlaying = try { player.isPlaying } catch (e: Exception) { false }
+            if (isCurrentlyPlaying) {
+                pause()
             } else {
-                player.start()
-                _isPlaying.value = true
-                startPositionTicker()
-                MusicService.update(appContext)
+                resume()
             }
         } else {
             val song = _currentSong.value
@@ -134,9 +202,21 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
     }
 
     fun pause() {
-        mediaPlayer?.let {
-            if (it.isPlaying) {
-                it.pause()
+        resumeOnFocusGain = false
+        audioFocusHelper.abandonAudioFocus()
+        pauseInternal()
+    }
+
+    private fun pauseInternal() {
+        if (isPreparing) {
+            playWhenReady = false
+            _isPlaying.value = false
+            return
+        }
+        mediaPlayer?.let { player ->
+            val isCurrentlyPlaying = try { player.isPlaying } catch (e: Exception) { false }
+            if (isPrepared && isCurrentlyPlaying) {
+                player.pause()
                 _isPlaying.value = false
                 stopPositionTicker()
                 MusicService.update(appContext)
@@ -145,9 +225,17 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
     }
 
     fun resume() {
-        mediaPlayer?.let {
-            if (!it.isPlaying) {
-                it.start()
+        if (!audioFocusHelper.requestAudioFocus()) return
+        if (isPreparing) {
+            playWhenReady = true
+            _isPlaying.value = true
+            return
+        }
+        mediaPlayer?.let { player ->
+            val isCurrentlyPlaying = try { player.isPlaying } catch (e: Exception) { false }
+            if (isPrepared && !isCurrentlyPlaying) {
+                player.setVolume(1.0f, 1.0f)
+                player.start()
                 _isPlaying.value = true
                 startPositionTicker()
                 MusicService.update(appContext)
@@ -156,6 +244,10 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
     }
 
     fun next() {
+        val now = System.nanoTime() / 1_000_000L
+        if (now - lastNavTimestamp < 500L) return
+        lastNavTimestamp = now
+
         val list = _playlist.value
         val current = _currentSong.value
         if (list.isEmpty()) return
@@ -191,11 +283,18 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
     }
 
     fun previous() {
+        val now = System.nanoTime() / 1_000_000L
+        if (now - lastNavTimestamp < 500L) return
+        lastNavTimestamp = now
+
         val player = mediaPlayer
-        if (player != null && player.currentPosition > 3000) {
-            // If played for more than 3 seconds, restart current track
-            seekTo(0)
-            return
+        if (player != null && isPrepared) {
+            val curPos = try { player.currentPosition } catch (e: Exception) { 0 }
+            if (curPos > 3000) {
+                // If played for more than 3 seconds, restart current track
+                seekTo(0)
+                return
+            }
         }
 
         val list = _playlist.value
@@ -223,10 +322,17 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
     }
 
     fun seekTo(positionMs: Long) {
-        mediaPlayer?.let {
-            val target = positionMs.coerceIn(0L, it.duration.toLong().coerceAtLeast(1L)).toInt()
-            it.seekTo(target)
-            _currentPositionMs.value = target.toLong()
+        if (isPreparing) {
+            pendingSeekPositionMs = positionMs
+            _currentPositionMs.value = positionMs
+            return
+        }
+        mediaPlayer?.let { player ->
+            if (isPrepared) {
+                val target = positionMs.coerceIn(0L, player.duration.toLong().coerceAtLeast(1L)).toInt()
+                player.seekTo(target)
+                _currentPositionMs.value = target.toLong()
+            }
         }
     }
 
@@ -239,12 +345,14 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
                 next()
             }
             RepeatMode.OFF -> {
+                Log.d("MusicPlayerManager", "Song completed in OFF repeat mode")
                 val list = _playlist.value
                 val current = _currentSong.value
                 val currentIndex = list.indexOfFirst { it.id == current?.id }
                 if (currentIndex != -1 && currentIndex + 1 < list.size) {
                     playSong(list[currentIndex + 1])
                 } else {
+                    audioFocusHelper.abandonAudioFocus()
                     _isPlaying.value = false
                     stopPositionTicker()
                     seekTo(0)
@@ -259,7 +367,8 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
         tickerJob = scope.launch {
             while (isActive) {
                 mediaPlayer?.let { player ->
-                    if (player.isPlaying) {
+                    val isPlaying = try { player.isPlaying } catch (e: Exception) { false }
+                    if (isPlaying) {
                         _currentPositionMs.value = player.currentPosition.toLong()
                     }
                 }
@@ -275,11 +384,20 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
 
     private fun releasePlayer() {
         stopPositionTicker()
-        mediaPlayer?.let {
+        isPreparing = false
+        isPrepared = false
+        playWhenReady = false
+        pendingSeekPositionMs = null
+
+        mediaPlayer?.let { player ->
             try {
-                if (it.isPlaying) it.stop()
-                it.reset()
-                it.release()
+                player.setOnPreparedListener(null)
+                player.setOnCompletionListener(null)
+                player.setOnErrorListener(null)
+                val isCurrentlyPlaying = try { player.isPlaying } catch (e: Exception) { false }
+                if (isCurrentlyPlaying) player.stop()
+                player.reset()
+                player.release()
             } catch (ignored: Exception) {
             }
         }
@@ -287,7 +405,13 @@ class MusicPlayerManager private constructor(private val appContext: Context) {
     }
 
     fun stopAndRelease() {
+        if (mediaPlayer == null && !_isPlaying.value && _currentSong.value == null) {
+            return
+        }
+        resumeOnFocusGain = false
+        audioFocusHelper.abandonAudioFocus()
         releasePlayer()
+        lastNavTimestamp = 0L
         _isPlaying.value = false
         _currentSong.value = null
         _currentPositionMs.value = 0L
