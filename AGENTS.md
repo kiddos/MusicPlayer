@@ -50,7 +50,7 @@ MusicPlayer/
 
 ## 2. Environment & Build Commands
 
-- **JDK Version**: Java 11 compatibility is targeted (`sourceCompatibility = JavaVersion.VERSION_11`). A JDK 17 or JDK 21 is typically used to run the Gradle daemon (Project specifies Java 21 toolchain in `gradle/gradle-daemon-jvm.properties`).
+- **JDK Version**: Java 11 compatibility is targeted (`sourceCompatibility = JavaVersion.VERSION_11`, `targetCompatibility = JavaVersion.VERSION_11`). A JDK 17 or JDK 21 is typically used to run the Gradle daemon (Project specifies Java 21 toolchain in `gradle/gradle-daemon-jvm.properties`).
 - **Android SDK Setup**:
   - Compile SDK: 36 (minorApiLevel = 1)
   - Target SDK: 36
